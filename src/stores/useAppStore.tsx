@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useMemo,
+  useCallback,
 } from 'react'
 import { Sale, CommissionData } from '@/types'
 import { addMonths, isSameMonth, getMonth, getYear } from 'date-fns'
@@ -77,77 +78,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setSales(generateMockSales())
   }, [])
 
-  const addSale = (saleData: Omit<Sale, 'id' | 'createdAt'>) => {
+  const addSale = useCallback((saleData: Omit<Sale, 'id' | 'createdAt'>) => {
     const newSale: Sale = {
       ...saleData,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date(),
     }
     setSales((prev) => [...prev, newSale])
-  }
+  }, [])
 
-  const updateSale = (id: string, updatedData: Partial<Sale>) => {
+  const updateSale = useCallback((id: string, updatedData: Partial<Sale>) => {
     setSales((prev) =>
       prev.map((s) => (s.id === id ? { ...s, ...updatedData } : s)),
     )
-  }
+  }, [])
 
-  const deleteSale = (id: string) => {
+  const deleteSale = useCallback((id: string) => {
     setSales((prev) => prev.filter((s) => s.id !== id))
-  }
+  }, [])
 
-  const updateCommission = (
-    year: number,
-    month: number,
-    data: Partial<CommissionData>,
-  ) => {
-    setCommissions((prev) => {
-      const existingIndex = prev.findIndex(
+  const updateCommission = useCallback(
+    (year: number, month: number, data: Partial<CommissionData>) => {
+      setCommissions((prev) => {
+        const existingIndex = prev.findIndex(
+          (c) => c.year === year && c.month === month,
+        )
+        if (existingIndex >= 0) {
+          const updated = [...prev]
+          updated[existingIndex] = { ...updated[existingIndex], ...data }
+          return updated
+        } else {
+          return [
+            ...prev,
+            {
+              year,
+              month,
+              bonus: 0,
+              returns: 0,
+              transfers: 0,
+              surplus: 0,
+              extras: 0,
+              salary: 1991,
+              ...data,
+            },
+          ]
+        }
+      })
+    },
+    [],
+  )
+
+  const getMonthlyData = useCallback(
+    (date: Date) => {
+      const month = getMonth(date)
+      const year = getYear(date)
+
+      const monthlySales = sales.filter((s) => isSameMonth(s.date, date))
+      const commission = commissions.find(
         (c) => c.year === year && c.month === month,
-      )
-      if (existingIndex >= 0) {
-        const updated = [...prev]
-        updated[existingIndex] = { ...updated[existingIndex], ...data }
-        return updated
-      } else {
-        return [
-          ...prev,
-          {
-            year,
-            month,
-            bonus: 0,
-            returns: 0,
-            transfers: 0,
-            surplus: 0,
-            extras: 0,
-            salary: 1991,
-            ...data,
-          },
-        ]
+      ) || {
+        year,
+        month,
+        bonus: 0,
+        returns: 0,
+        transfers: 0,
+        surplus: 0,
+        extras: 0,
+        salary: 1991,
       }
-    })
-  }
 
-  const getMonthlyData = (date: Date) => {
-    const month = getMonth(date)
-    const year = getYear(date)
-
-    const monthlySales = sales.filter((s) => isSameMonth(s.date, date))
-    const commission = commissions.find(
-      (c) => c.year === year && c.month === month,
-    ) || {
-      year,
-      month,
-      bonus: 0,
-      returns: 0,
-      transfers: 0,
-      surplus: 0,
-      extras: 0,
-      salary: 1991,
-    }
-
-    return { sales: monthlySales, commissionData: commission }
-  }
+      return { sales: monthlySales, commissionData: commission }
+    },
+    [sales, commissions],
+  )
 
   const value = useMemo(
     () => ({
@@ -161,7 +164,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setSelectedDate,
       getMonthlyData,
     }),
-    [sales, commissions, selectedDate],
+    [
+      sales,
+      commissions,
+      selectedDate,
+      addSale,
+      updateSale,
+      deleteSale,
+      updateCommission,
+      getMonthlyData,
+    ],
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

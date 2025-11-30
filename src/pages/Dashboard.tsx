@@ -2,17 +2,7 @@ import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, DollarSign, Users, Target } from 'lucide-react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from 'recharts'
+import { XAxis, YAxis, AreaChart, Area } from 'recharts'
 import useAppStore from '@/stores/useAppStore'
 import { MonthYearPicker } from '@/components/MonthYearPicker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,12 +15,11 @@ import {
 import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
-  const { selectedDate, setSelectedDate, getMonthlyData, sales, commissions } =
-    useAppStore()
+  const { selectedDate, setSelectedDate, getMonthlyData, sales } = useAppStore()
 
-  const { sales: monthlySales, commissionData } = useMemo(
+  const { sales: monthlySales } = useMemo(
     () => getMonthlyData(selectedDate),
-    [selectedDate, sales, commissions, getMonthlyData],
+    [selectedDate, getMonthlyData],
   )
 
   const totalCommissionsMonth = monthlySales.reduce(

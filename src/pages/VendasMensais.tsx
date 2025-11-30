@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { Edit2, Trash2, Plus, Download, Search } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { Sale, OperationType } from '@/types'
@@ -40,7 +39,10 @@ export default function VendasMensais() {
     updateSale,
     deleteSale,
   } = useAppStore()
-  const { sales: monthlySales } = getMonthlyData(selectedDate)
+  const { sales: monthlySales } = useMemo(
+    () => getMonthlyData(selectedDate),
+    [selectedDate, getMonthlyData],
+  )
   const { toast } = useToast()
 
   const [searchTerm, setSearchTerm] = useState('')
