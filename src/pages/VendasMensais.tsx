@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -28,7 +28,7 @@ export default function VendasMensais() {
   const [saleModalOpen, setSaleModalOpen] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
 
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     setLoading(true)
     try {
       const data = await salesService.getSales({
@@ -42,11 +42,11 @@ export default function VendasMensais() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedMonth, selectedYear])
 
   useEffect(() => {
     fetchSales()
-  }, [selectedMonth, selectedYear])
+  }, [fetchSales])
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta venda?')) {
