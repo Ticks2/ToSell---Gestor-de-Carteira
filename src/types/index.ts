@@ -7,6 +7,7 @@ export interface Client {
   city?: string | null
   phone?: string | null
   email?: string | null
+  status: 'client' | 'lead'
   created_at?: string
 }
 
@@ -65,4 +66,29 @@ export interface ImportHistory {
   importedRecords: number
   failedRecords: number
   errorDetails: ImportError[]
+}
+
+export interface ClientInteraction {
+  id: string
+  client_id: string
+  user_id: string
+  interaction_date: string // ISO timestamp
+  interaction_type: string
+  notes: string | null
+  next_contact_date: string | null // ISO Date YYYY-MM-DD
+  status: string
+  created_at: string
+  client?: Client // Joined data
+}
+
+export interface ClientAlert {
+  id: string
+  client_id: string
+  user_id: string
+  alert_type: string
+  alert_date: string // ISO Date YYYY-MM-DD
+  message: string | null
+  is_dismissed: boolean
+  created_at: string
+  client?: Client // Joined data
 }

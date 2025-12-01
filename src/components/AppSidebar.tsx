@@ -1,4 +1,11 @@
-import { Home, BarChart2, DollarSign, FileText, History } from 'lucide-react'
+import {
+  Home,
+  BarChart2,
+  DollarSign,
+  FileText,
+  History,
+  Users,
+} from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Sidebar,
@@ -17,6 +24,7 @@ const navItems = [
   { icon: FileText, label: 'Vendas Mensais', path: '/vendas' },
   { icon: DollarSign, label: 'Comissões', path: '/comissoes' },
   { icon: BarChart2, label: 'Relatórios', path: '/relatorios' },
+  { icon: Users, label: 'CRM', path: '/crm/clients' },
   {
     icon: History,
     label: 'Histórico de Importações',
@@ -47,7 +55,9 @@ export function AppSidebar() {
       <SidebarContent className="p-2">
         <SidebarMenu>
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path
+            const isActive =
+              location.pathname.startsWith(item.path) ||
+              (item.path === '/' && location.pathname === '/')
             return (
               <SidebarMenuItem key={item.path}>
                 <SidebarMenuButton

@@ -14,6 +14,12 @@ import Login from './pages/Login'
 import Account from './pages/Account'
 import Layout from './components/Layout'
 
+// CRM Pages
+import CrmClients from './pages/crm/CrmClients'
+import CrmKanban from './pages/crm/CrmKanban'
+import CrmAlerts from './pages/crm/CrmAlerts'
+import ClientDetails from './pages/crm/ClientDetails'
+
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth()
 
@@ -51,6 +57,16 @@ const App = () => (
                 element={<HistoricoImportacoes />}
               />
               <Route path="/account" element={<Account />} />
+
+              {/* CRM Routes */}
+              <Route
+                path="/crm"
+                element={<Navigate to="/crm/clients" replace />}
+              />
+              <Route path="/crm/clients" element={<CrmClients />} />
+              <Route path="/crm/kanban" element={<CrmKanban />} />
+              <Route path="/crm/alerts" element={<CrmAlerts />} />
+              <Route path="/crm/clients/:id" element={<ClientDetails />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
