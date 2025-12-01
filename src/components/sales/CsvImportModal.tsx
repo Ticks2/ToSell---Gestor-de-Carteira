@@ -84,7 +84,6 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
       } else {
         status = 'Falha'
         if (failedRecords === 0) {
-          // No sales found and no explicit errors returned by parser (empty file?)
           toast({
             title: 'Nenhum registro',
             description: 'Não foi possível identificar vendas no conteúdo.',
@@ -103,7 +102,6 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
         await refreshSales()
       }
 
-      // Only close if full success
       if (status === 'Sucesso') {
         handleClose()
       } else {
@@ -112,7 +110,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
     } catch (error: any) {
       console.error(error)
       status = 'Falha'
-      failedRecords = totalRecords // Assuming all failed if DB error
+      failedRecords = totalRecords
       importedRecords = 0
       currentErrors.push({
         row: 0,
@@ -125,7 +123,6 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
         variant: 'destructive',
       })
     } finally {
-      // Log history
       try {
         await salesService.logImport({
           sourceType: activeTab === 'file' ? 'Arquivo CSV' : 'Texto Colado',
@@ -173,6 +170,8 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
           <DialogTitle>Importar Vendas</DialogTitle>
           <DialogDescription>
             Importe seus dados via arquivo CSV ou cole o texto diretamente.
+            <br />O sistema detecta automaticamente tabelas lado a lado e datas
+            complexas.
           </DialogDescription>
         </DialogHeader>
 
@@ -228,7 +227,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
 
             <TabsContent value="text" className="mt-0 h-full">
               <Textarea
-                placeholder="Cole aqui os dados das vendas..."
+                placeholder="Cole aqui os dados das vendas (suporta tabelas copiadas do Excel)..."
                 className="h-[300px] font-mono text-xs resize-none"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
@@ -251,6 +250,11 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
                 {validationErrors.slice(0, 10).map((err, idx) => (
                   <li key={idx}>
                     <strong>Linha {err.row}:</strong> {err.message}
+                    {err.data && (
+                      <span className="block text-[10px] text-muted-foreground/80 truncate font-mono">
+                        {JSON.stringify(err.data)}
+                      </span>
+                    )}
                   </li>
                 ))}
                 {validationErrors.length > 10 && (

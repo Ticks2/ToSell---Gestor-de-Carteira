@@ -15,6 +15,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      import_history: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          failed_records: number
+          id: string
+          imported_records: number
+          source_type: string
+          status: string
+          total_records: number
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          failed_records?: number
+          id?: string
+          imported_records?: number
+          source_type: string
+          status: string
+          total_records?: number
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          failed_records?: number
+          id?: string
+          imported_records?: number
+          source_type?: string
+          status?: string
+          total_records?: number
+        }
+        Relationships: []
+      }
       vendas: {
         Row: {
           ano_carro: number
