@@ -12,15 +12,20 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Header } from '@/components/Header'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Plus, Search, User } from 'lucide-react'
-import { format } from 'date-fns'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, Search, User, Edit2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { ClientFormModal } from '@/components/crm/ClientFormModal'
+import { Client } from '@/types'
 
 export default function CrmClients() {
   const { clients, leads, fetchClients, isLoading } = useCrmStore()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('clients')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState<Client | undefined>(
+    undefined,
+  )
 
   useEffect(() => {
     fetchClients()
@@ -36,6 +41,20 @@ export default function CrmClients() {
 
   const filteredClients = filterList(clients)
   const filteredLeads = filterList(leads)
+
+  const handleEdit = (client: Client) => {
+    setEditingClient(client)
+    setIsModalOpen(true)
+  }
+
+  const handleCreate = () => {
+    setEditingClient(undefined)
+    setIsModalOpen(true)
+  }
+
+  const handleSuccess = () => {
+    fetchClients()
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -65,8 +84,8 @@ export default function CrmClients() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button asChild>
-              <Link to="/crm/kanban">Ver Kanban</Link>
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 h-4 w-4" /> Novo Cliente
             </Button>
           </div>
         </div>
@@ -87,11 +106,18 @@ export default function CrmClients() {
               {(activeTab === 'clients' ? filteredClients : filteredLeads).map(
                 (client) => (
                   <TableRow key={client.id}>
-                    <TableCell className="font-medium flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <User className="h-4 w-4" />
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <Link
+                          to={`/crm/clients/${client.id}`}
+                          className="hover:underline text-primary font-medium"
+                        >
+                          {client.full_name}
+                        </Link>
                       </div>
-                      {client.full_name}
                     </TableCell>
                     <TableCell>{client.email || '-'}</TableCell>
                     <TableCell>{client.phone || '-'}</TableCell>
@@ -106,8 +132,12 @@ export default function CrmClients() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/crm/clients/${client.id}`}>Ver Perfil</Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(client)}
+                      >
+                        <Edit2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -136,6 +166,13 @@ export default function CrmClients() {
           </Table>
         </div>
       </div>
+
+      <ClientFormModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        initialData={editingClient}
+        onSuccess={handleSuccess}
+      />
     </div>
   )
 }

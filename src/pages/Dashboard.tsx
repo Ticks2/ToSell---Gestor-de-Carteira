@@ -1,18 +1,21 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { format, subMonths, getYear, getMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, DollarSign, Users, Target } from 'lucide-react'
+import { TrendingUp, DollarSign, Users, Target, Bell } from 'lucide-react'
 import { XAxis, YAxis, AreaChart, Area } from 'recharts'
 import useAppStore from '@/stores/useAppStore'
+import useCrmStore from '@/stores/useCrmStore'
 import { MonthYearPicker } from '@/components/MonthYearPicker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/Header'
+import { Link } from 'react-router-dom'
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 export default function Dashboard() {
   const {
@@ -23,6 +26,12 @@ export default function Dashboard() {
     commissions,
     monthlyGoal,
   } = useAppStore()
+
+  const { alerts, checkAndGenerateAlerts } = useCrmStore()
+
+  useEffect(() => {
+    checkAndGenerateAlerts()
+  }, [checkAndGenerateAlerts])
 
   // Data for current selected month
   const { sales: monthlySales } = useMemo(
@@ -273,13 +282,60 @@ export default function Dashboard() {
           </Card>
 
           <div className="col-span-3 space-y-4">
+            {/* New Alerts Widget */}
+            <Card className="card-shadow border-none bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between text-base">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-primary" />
+                    Alertas CRM
+                  </div>
+                  <Link
+                    to="/crm/alerts"
+                    className="text-xs text-primary hover:underline font-normal"
+                  >
+                    Ver todos
+                  </Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {alerts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Nenhum alerta pendente.
+                    </p>
+                  ) : (
+                    alerts.slice(0, 3).map((alert) => (
+                      <div
+                        key={alert.id}
+                        className="flex items-start gap-3 p-2 bg-background rounded border text-sm"
+                      >
+                        <div
+                          className={`h-2 w-2 mt-1.5 rounded-full ${alert.alert_type === 'birthday' ? 'bg-pink-500' : alert.alert_type === 'post-sale' ? 'bg-blue-500' : 'bg-yellow-500'}`}
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium line-clamp-1">
+                            {alert.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(alert.alert_date), 'dd/MM')} •{' '}
+                            {alert.client?.full_name}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="card-shadow border-none">
               <CardHeader>
                 <CardTitle>Últimas Vendas</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {monthlySales.slice(0, 5).map((sale) => (
+                  {monthlySales.slice(0, 3).map((sale) => (
                     <div key={sale.id} className="flex items-center">
                       <div
                         className={cn(
@@ -309,40 +365,6 @@ export default function Dashboard() {
                       Nenhuma venda registrada.
                     </p>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-shadow border-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <TrendingUp className="h-4 w-4" />
-                  Histórico Recente
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {historyData.map((history) => (
-                    <div
-                      key={history.date.toString()}
-                      className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border/50"
-                    >
-                      <div>
-                        <p className="font-medium capitalize text-sm">
-                          {format(history.date, 'MMMM yyyy', { locale: ptBR })}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {history.vehicles} veículos
-                        </p>
-                      </div>
-                      <span className="font-bold text-sm">
-                        {history.total.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </span>
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>

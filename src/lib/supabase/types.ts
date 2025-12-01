@@ -15,6 +15,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_alerts: {
+        Row: {
+          alert_date: string
+          alert_type: string
+          client_id: string
+          created_at: string
+          id: string
+          is_dismissed: boolean | null
+          message: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_date: string
+          alert_type: string
+          client_id: string
+          created_at?: string
+          id?: string
+          is_dismissed?: boolean | null
+          message?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_date?: string
+          alert_type?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_dismissed?: boolean | null
+          message?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'client_alerts_client_id_fkey'
+            columns: ['client_id']
+            isOneToOne: false
+            referencedRelation: 'clients'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'client_alerts_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['user_id']
+          },
+        ]
+      }
+      client_interactions: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          interaction_date: string
+          interaction_type: string
+          next_contact_date: string | null
+          notes: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          interaction_date?: string
+          interaction_type: string
+          next_contact_date?: string | null
+          notes?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          interaction_date?: string
+          interaction_type?: string
+          next_contact_date?: string | null
+          notes?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'client_interactions_client_id_fkey'
+            columns: ['client_id']
+            isOneToOne: false
+            referencedRelation: 'clients'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'client_interactions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['user_id']
+          },
+        ]
+      }
       clients: {
         Row: {
           birth_date: string | null
@@ -24,6 +123,7 @@ export type Database = {
           full_name: string
           id: string
           phone: string | null
+          status: string
           user_id: string
         }
         Insert: {
@@ -34,6 +134,7 @@ export type Database = {
           full_name: string
           id?: string
           phone?: string | null
+          status?: string
           user_id: string
         }
         Update: {
@@ -44,6 +145,7 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string | null
+          status?: string
           user_id?: string
         }
         Relationships: [

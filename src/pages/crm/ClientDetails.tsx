@@ -31,6 +31,7 @@ import {
   Calendar,
   Plus,
   Bell,
+  Users,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -64,7 +65,6 @@ export default function ClientDetails() {
 
   // Alert Form State
   const [newAlert, setNewAlert] = useState({
-    type: 'Custom',
     date: '',
     message: '',
   })
@@ -94,6 +94,7 @@ export default function ClientDetails() {
         status: 'Contacted',
       })
       toast({ title: 'Interação registrada!' })
+      fetchClientDetails(id) // Refresh list
     } catch (error) {
       toast({ title: 'Erro ao registrar', variant: 'destructive' })
     }
@@ -104,12 +105,12 @@ export default function ClientDetails() {
     try {
       await createAlert({
         client_id: id,
-        alert_type: newAlert.type,
+        alert_type: 'custom',
         alert_date: newAlert.date,
         message: newAlert.message,
       })
       setIsAlertOpen(false)
-      setNewAlert({ type: 'Custom', date: '', message: '' })
+      setNewAlert({ date: '', message: '' })
       toast({ title: 'Alerta criado!' })
     } catch (error) {
       toast({ title: 'Erro ao criar alerta', variant: 'destructive' })
@@ -505,26 +506,5 @@ export default function ClientDetails() {
         </div>
       </div>
     </div>
-  )
-}
-
-// Helper component for timeline icon
-function Users({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
   )
 }

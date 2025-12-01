@@ -85,7 +85,7 @@ export interface ClientAlert {
   id: string
   client_id: string
   user_id: string
-  alert_type: string
+  alert_type: 'birthday' | 'post-sale' | 'custom'
   alert_date: string // ISO Date YYYY-MM-DD
   message: string | null
   is_dismissed: boolean

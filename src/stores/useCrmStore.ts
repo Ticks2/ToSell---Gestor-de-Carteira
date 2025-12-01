@@ -25,6 +25,7 @@ interface CrmState {
     clientId: string,
     status: 'client' | 'lead',
   ) => Promise<void>
+  checkAndGenerateAlerts: () => Promise<void>
 }
 
 const useCrmStore = create<CrmState>((set, get) => ({
@@ -97,7 +98,7 @@ const useCrmStore = create<CrmState>((set, get) => ({
         currentClient: client,
         clientSales: filteredSales,
         interactions: interactions,
-      }) // Only interactions for this client in view
+      })
     } catch (error) {
       console.error('Error fetching client details', error)
     } finally {
@@ -124,7 +125,6 @@ const useCrmStore = create<CrmState>((set, get) => ({
       await crmService.updateInteraction(id, { status })
     } catch (error) {
       console.error('Error updating status', error)
-      // Revert on error would be ideal
       get().fetchInteractions()
     }
   },
@@ -150,6 +150,16 @@ const useCrmStore = create<CrmState>((set, get) => ({
   setClientStatus: async (clientId, status) => {
     await clientService.updateClient(clientId, { status })
     await get().fetchClients() // Refresh lists
+  },
+
+  checkAndGenerateAlerts: async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    await crmService.syncAutomatedAlerts(user.id)
+    await get().fetchAlerts()
   },
 }))
 
