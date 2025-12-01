@@ -31,7 +31,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-border/50 bg-sidebar-background"
+      className="border-r border-border/50 bg-sidebar"
     >
       <SidebarHeader className="h-16 flex items-center justify-center border-b border-border/50 px-4">
         {open ? (

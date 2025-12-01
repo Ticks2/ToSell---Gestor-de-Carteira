@@ -24,10 +24,16 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>) {
+    // Using upsert to handle cases where profile might be missing (edge case)
+    // We need to ensure the user_id is present for upsert
+    const profileData = {
+      user_id: userId,
+      ...updates,
+    }
+
     const { data, error } = await supabase
       .from('profiles')
-      .update(updates)
-      .eq('user_id', userId)
+      .upsert(profileData, { onConflict: 'user_id' })
       .select()
       .single()
 
@@ -42,7 +48,9 @@ export const profileService = {
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file)
+      .upload(filePath, file, {
+        upsert: true,
+      })
 
     if (uploadError) throw uploadError
 

@@ -14,6 +14,7 @@ interface SaleDB {
   tipo_operacao: string
   valor_comissao: number
   created_at: string
+  user_id: string | null
 }
 
 interface ImportHistoryDB {
@@ -44,6 +45,7 @@ const mapToAppType = (dbSale: SaleDB): Sale => ({
 
 const mapToDBType = (
   sale: Omit<Sale, 'id' | 'createdAt'>,
+  userId: string,
 ): Omit<SaleDB, 'id' | 'created_at'> => ({
   data_venda: sale.date.toISOString(),
   carro: sale.car,
@@ -55,6 +57,7 @@ const mapToDBType = (
   retorno: sale.returnType || null,
   tipo_operacao: sale.type,
   valor_comissao: sale.commission,
+  user_id: userId,
 })
 
 const mapImportHistoryToApp = (dbHistory: ImportHistoryDB): ImportHistory => ({
@@ -80,7 +83,13 @@ export const salesService = {
   },
 
   async createSale(sale: Omit<Sale, 'id' | 'createdAt'>) {
-    const dbSale = mapToDBType(sale)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) throw new Error('User not authenticated')
+
+    const dbSale = mapToDBType(sale, user.id)
     const { data, error } = await supabase
       .from('vendas')
       .insert(dbSale)
@@ -124,7 +133,7 @@ export const salesService = {
   },
 
   async importSales(salesData: any[]) {
-    // Uses the RPC function to clear and replace sales in a transaction-like manner
+    // The RPC function now uses auth.uid() internally for security
     const { error } = await supabase.rpc('replace_vendas', {
       p_vendas: salesData,
     })
