@@ -9,6 +9,7 @@ export interface Profile {
   company_id: string | null
   role: 'individual' | 'manager' | 'seller'
   created_at: string
+  monthly_commission_target: number
 }
 
 export const profileService = {
@@ -24,8 +25,6 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>) {
-    // Using upsert to handle cases where profile might be missing (edge case)
-    // We need to ensure the user_id is present for upsert
     const profileData = {
       user_id: userId,
       ...updates,

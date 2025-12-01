@@ -68,7 +68,7 @@ export default function VendasMensais() {
 
   const handleAddSale = async (data: any) => {
     try {
-      await addSale({ ...data, date: new Date(data.date) })
+      await addSale(data)
       setIsModalOpen(false)
       toast({
         title: 'Venda registrada com sucesso!',
@@ -85,7 +85,7 @@ export default function VendasMensais() {
   const handleUpdateSale = async (data: any) => {
     if (editingSale) {
       try {
-        await updateSale(editingSale.id, { ...data, date: new Date(data.date) })
+        await updateSale(editingSale.id, data)
         setEditingSale(undefined)
         setIsModalOpen(false)
         toast({
@@ -188,10 +188,10 @@ export default function VendasMensais() {
                 <TableHead>Data</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Carro</TableHead>
-                <TableHead>Ano</TableHead>
+                <TableHead>Ano Modelo</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Gestauto</TableHead>
+                <TableHead>Valor Venda</TableHead>
                 <TableHead className="text-right">Comissão</TableHead>
                 <TableHead className="w-[100px]"></TableHead>
               </TableRow>
@@ -245,7 +245,14 @@ export default function VendasMensais() {
                         {sale.plate || '-'}
                       </TableCell>
                       <TableCell>{sale.client}</TableCell>
-                      <TableCell>{sale.gestauto ? 'Sim' : 'Não'}</TableCell>
+                      <TableCell>
+                        {sale.saleValue
+                          ? sale.saleValue.toLocaleString('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            })
+                          : '-'}
+                      </TableCell>
                       <TableCell className="text-right font-bold text-primary">
                         {sale.commission.toLocaleString('pt-BR', {
                           style: 'currency',

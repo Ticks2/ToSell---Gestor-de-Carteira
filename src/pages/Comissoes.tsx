@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import useAppStore from '@/stores/useAppStore'
 import { Header } from '@/components/Header'
 import { MonthYearPicker } from '@/components/MonthYearPicker'
@@ -6,25 +6,44 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 import { getMonth, getYear } from 'date-fns'
+import { Save } from 'lucide-react'
 
 export default function Comissoes() {
-  const { selectedDate, setSelectedDate, getMonthlyData, updateCommission } =
-    useAppStore()
+  const {
+    selectedDate,
+    setSelectedDate,
+    getMonthlyData,
+    updateCommission,
+    monthlyGoal,
+    updateMonthlyGoal,
+  } = useAppStore()
   const { sales: monthlySales, commissionData } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
   )
+  const [goalInput, setGoalInput] = useState(monthlyGoal.toString())
+
+  useEffect(() => {
+    setGoalInput(monthlyGoal.toString())
+  }, [monthlyGoal])
 
   const totalSalesCommission = monthlySales.reduce(
     (acc, s) => acc + s.commission,
     0,
   )
 
+  // Determine current tier for visual feedback
+  const vehiclesSold = monthlySales.filter((s) => s.type === 'Venda').length
+
+  // Using calculated bonus from getMonthlyData which handles logic
+  const currentBonus = commissionData.bonus
+
   // Calculate total
   const totalMensal =
     totalSalesCommission +
-    (commissionData.bonus || 0) +
+    (currentBonus || 0) +
     (commissionData.returns || 0) +
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
@@ -40,13 +59,36 @@ export default function Comissoes() {
     })
   }
 
+  const handleSaveGoal = () => {
+    updateMonthlyGoal(Number(goalInput))
+  }
+
   return (
     <div className="flex flex-col h-full">
       <Header title="Comissões" />
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <h2 className="text-lg font-semibold">Resumo Financeiro</h2>
-          <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-card p-1 rounded border shadow-sm">
+              <span className="text-sm font-medium pl-2">Meta Mensal: R$</span>
+              <Input
+                className="w-24 h-8 border-none focus-visible:ring-0"
+                type="number"
+                value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={handleSaveGoal}
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </div>
+            <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -66,14 +108,21 @@ export default function Comissoes() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Calculado automaticamente com base nas vendas lançadas.
+                  {vehiclesSold} veículos vendidos neste mês.
                 </p>
               </div>
               <Separator />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Bônus</Label>
+                  <Label className="flex justify-between">
+                    Bônus
+                    {currentBonus > 0 && (
+                      <span className="text-green-600 font-bold text-xs">
+                        Ativo
+                      </span>
+                    )}
+                  </Label>
                   <div className="relative">
                     <span className="absolute left-2 top-2.5 text-muted-foreground text-xs">
                       R$
@@ -81,13 +130,16 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={commissionData.bonus || ''}
-                      onChange={(e) =>
-                        handleInputChange('bonus', e.target.value)
-                      }
+                      value={currentBonus}
+                      readOnly
+                      disabled
+                      className="bg-muted"
                       placeholder="0.00"
                     />
                   </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Automático via volume de vendas
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Retorno</Label>
@@ -194,28 +246,56 @@ export default function Comissoes() {
           <div className="space-y-6 md:col-span-1">
             <Card className="card-shadow border-none bg-blue-50 dark:bg-slate-900">
               <CardHeader>
-                <CardTitle className="text-lg">Bônus & Metas</CardTitle>
+                <CardTitle className="text-lg">
+                  Regras de Bônus por Volume
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500" />
-                    <span>
-                      Meta Básica: R$ 2.000,00 de comissão (+R$ 400 bônus)
-                    </span>
+                <ul className="space-y-3 text-sm">
+                  <li
+                    className={`flex items-center gap-3 p-2 rounded ${vehiclesSold >= 7 && vehiclesSold < 8 ? 'bg-green-100 dark:bg-green-900/30' : ''}`}
+                  >
+                    <div
+                      className={`h-3 w-3 rounded-full ${vehiclesSold >= 7 ? 'bg-green-500' : 'bg-gray-300'}`}
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">7 Veículos Vendidos</span>
+                      <p className="text-xs text-muted-foreground">
+                        Bônus: +R$ 750,00
+                      </p>
+                    </div>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-blue-500" />
-                    <span>Meta Intermediária: R$ 3.500,00 (+R$ 700 bônus)</span>
+                  <li
+                    className={`flex items-center gap-3 p-2 rounded ${vehiclesSold >= 8 && vehiclesSold < 10 ? 'bg-green-100 dark:bg-green-900/30' : ''}`}
+                  >
+                    <div
+                      className={`h-3 w-3 rounded-full ${vehiclesSold >= 8 ? 'bg-green-500' : 'bg-gray-300'}`}
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">8 Veículos Vendidos</span>
+                      <p className="text-xs text-muted-foreground">
+                        Bônus: +R$ 2.000,00
+                      </p>
+                    </div>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-purple-500" />
-                    <span>Meta Premium: R$ 5.000,00 (+R$ 1.500 bônus)</span>
+                  <li
+                    className={`flex items-center gap-3 p-2 rounded ${vehiclesSold >= 10 ? 'bg-green-100 dark:bg-green-900/30' : ''}`}
+                  >
+                    <div
+                      className={`h-3 w-3 rounded-full ${vehiclesSold >= 10 ? 'bg-green-500' : 'bg-gray-300'}`}
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">10+ Veículos Vendidos</span>
+                      <p className="text-xs text-muted-foreground">
+                        Bônus: +R$ 3.000,00
+                      </p>
+                    </div>
                   </li>
                 </ul>
-                <div className="mt-4 p-3 bg-card/50 rounded-md text-xs text-muted-foreground italic">
-                  * Bônus não aplicados automaticamente. Insira manualmente no
-                  campo ao lado.
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm font-medium">
+                    Progresso Atual: {vehiclesSold} vendas
+                  </p>
                 </div>
               </CardContent>
             </Card>

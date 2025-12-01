@@ -1,14 +1,30 @@
 export type OperationType = 'Venda' | 'Compra'
 
+export interface Client {
+  id: string
+  full_name: string
+  birth_date?: string | null // ISO Date string YYYY-MM-DD
+  city?: string | null
+  phone?: string | null
+  email?: string | null
+  created_at?: string
+}
+
 export interface Sale {
   id: string
   date: Date
   car: string
   year: number
   plate?: string
-  client: string
+
+  // Client info
+  client: string // Display name (kept for compatibility)
+  clientId?: string // Link to client record
+  clientDetails?: Client // Full object if available
+
   gestauto?: boolean
   financedValue?: number
+  saleValue?: number // valor_venda
   returnType?: 'R1' | 'R2' | 'R3' | 'R4' | 'R5'
   type: OperationType
   commission: number
@@ -29,7 +45,7 @@ export interface CommissionData {
 export interface SalesSummary {
   totalSales: number
   totalCommissions: number
-  totalGoal: number // Mocked goal
+  totalGoal: number // Configurable goal
   percentageGoal: number
 }
 
