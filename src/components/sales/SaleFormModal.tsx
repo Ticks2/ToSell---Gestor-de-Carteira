@@ -1,8 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Sale } from '@/types'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,6 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -26,150 +25,84 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Switch } from '@/components/ui/switch'
-import { useEffect } from 'react'
+import { Sale } from '@/types'
+import { salesService } from '@/services/salesService'
+import { toast } from 'sonner'
 
-const saleSchema = z.object({
-  type: z.enum(['Venda', 'Compra']),
-  date: z.string().refine((val) => new Date(val) <= new Date(), {
-    message: 'A data não pode ser futura',
-  }),
-  car: z.string().min(2, 'Nome do carro é obrigatório'),
-  year: z.coerce
-    .number()
-    .min(1980)
-    .max(new Date().getFullYear() + 1),
-  plate: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || /^[A-Z]{3}-\d[A-Z0-9]\d{2}$|^[A-Z]{3}-\d{4}$/.test(val),
-      {
-        message: 'Formato de placa inválido (AAA-9999 ou AAA-9A99)',
-      },
-    ),
-  client: z.string().min(2, 'Nome do cliente é obrigatório'),
-  gestauto: z.boolean().default(false),
-  financedValue: z.coerce.number().optional(),
-  returnType: z.enum(['R1', 'R2', 'R3', 'R4', 'R5']).optional(),
-  commission: z.coerce
-    .number()
-    .min(1, 'Valor da comissão deve ser maior que zero'),
+const formSchema = z.object({
+  data_venda: z.string().min(1, 'Data é obrigatória'),
+  carro: z.string().min(1, 'Carro é obrigatório'),
+  ano_carro: z.coerce.number().min(1900, 'Ano inválido'),
+  placa: z.string().optional(),
+  nome_cliente: z.string().min(1, 'Nome do cliente é obrigatório'),
+  gestauto: z.string().optional(),
+  valor_financiado: z.coerce.number().optional(),
+  retorno: z.string().optional(),
+  tipo_operacao: z.string().min(1, 'Tipo é obrigatório'),
+  valor_comissao: z.coerce.number().min(0, 'Comissão não pode ser negativa'),
 })
 
 interface SaleFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: z.infer<typeof saleSchema>) => void
-  initialData?: Sale
+  sale?: Sale | null
+  onSuccess: () => void
 }
 
 export function SaleFormModal({
   open,
   onOpenChange,
-  onSubmit,
-  initialData,
+  sale,
+  onSuccess,
 }: SaleFormModalProps) {
-  const form = useForm<z.infer<typeof saleSchema>>({
-    resolver: zodResolver(saleSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      type: 'Venda',
-      date: new Date().toISOString().split('T')[0],
-      car: '',
-      year: new Date().getFullYear(),
-      plate: '',
-      client: '',
-      gestauto: false,
-      financedValue: 0,
-      returnType: undefined,
-      commission: 0,
+      data_venda: sale?.data_venda ?? new Date().toISOString().split('T')[0],
+      carro: sale?.carro ?? '',
+      ano_carro: sale?.ano_carro ?? new Date().getFullYear(),
+      placa: sale?.placa ?? '',
+      nome_cliente: sale?.nome_cliente ?? '',
+      gestauto: sale?.gestauto ?? 'Não',
+      valor_financiado: sale?.valor_financiado ?? 0,
+      retorno: sale?.retorno ?? '',
+      tipo_operacao: sale?.tipo_operacao ?? 'Venda',
+      valor_comissao: sale?.valor_comissao ?? 0,
     },
   })
 
-  useEffect(() => {
-    if (open) {
-      if (initialData) {
-        form.reset({
-          type: initialData.type,
-          date: initialData.date.toISOString().split('T')[0],
-          car: initialData.car,
-          year: initialData.year,
-          plate: initialData.plate || '',
-          client: initialData.client,
-          gestauto: initialData.gestauto || false,
-          financedValue: initialData.financedValue || 0,
-          returnType: initialData.returnType,
-          commission: initialData.commission,
-        })
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      if (sale?.id) {
+        await salesService.updateSale(sale.id, values)
+        toast.success('Venda atualizada com sucesso!')
       } else {
-        form.reset({
-          type: 'Venda',
-          date: new Date().toISOString().split('T')[0],
-          car: '',
-          year: new Date().getFullYear(),
-          plate: '',
-          client: '',
-          gestauto: false,
-          financedValue: 0,
-          returnType: undefined,
-          commission: 0,
-        })
+        await salesService.createSale(values)
+        toast.success('Venda criada com sucesso!')
       }
+      onSuccess()
+      onOpenChange(false)
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao salvar venda')
     }
-  }, [open, initialData, form])
-
-  const suggestedCommissions =
-    form.watch('type') === 'Venda' ? [400, 450, 500, 600, 650, 800] : [600, 650]
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {initialData ? 'Editar Operação' : 'Nova Operação'}
-          </DialogTitle>
+          <DialogTitle>{sale ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <ToggleGroup
-                      type="single"
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem
-                        value="Venda"
-                        className="w-24 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                      >
-                        Venda
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="Compra"
-                        className="w-24 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                      >
-                        Compra
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="date"
+                name="data_venda"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data</FormLabel>
+                    <FormLabel>Data da Venda</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -179,102 +112,22 @@ export function SaleFormModal({
               />
               <FormField
                 control={form.control}
-                name="year"
+                name="tipo_operacao"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ano</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="car"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Carro</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Honda Civic" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="plate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Placa (Opcional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="AAA-9999"
-                        {...field}
-                        className="uppercase"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="client"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome do Cliente" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <FormField
-                control={form.control}
-                name="gestauto"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm w-full">
-                    <div className="space-y-0.5">
-                      <FormLabel>Gestauto</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="returnType"
-                render={({ field }) => (
-                  <FormItem className="w-full">
-                    <FormLabel>Retorno</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="R1">R1</SelectItem>
-                        <SelectItem value="R2">R2</SelectItem>
-                        <SelectItem value="R3">R3</SelectItem>
-                        <SelectItem value="R4">R4</SelectItem>
-                        <SelectItem value="R5">R5</SelectItem>
+                        <SelectItem value="Venda">Venda</SelectItem>
+                        <SelectItem value="Compra">Compra</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -286,12 +139,12 @@ export function SaleFormModal({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="financedValue"
+                name="carro"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor Financiado</FormLabel>
+                    <FormLabel>Veículo</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="0.00" {...field} />
+                      <Input placeholder="Ex: Corolla XEI" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -299,37 +152,95 @@ export function SaleFormModal({
               />
               <FormField
                 control={form.control}
-                name="commission"
+                name="ano_carro"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Comissão</FormLabel>
+                    <FormLabel>Ano Modelo</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-2 top-2.5 text-muted-foreground">
-                          R$
-                        </span>
-                        <Input
-                          type="number"
-                          className="pl-8"
-                          placeholder="0.00"
-                          {...field}
-                        />
-                      </div>
+                      <Input type="number" {...field} />
                     </FormControl>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {suggestedCommissions.map((val) => (
-                        <Button
-                          key={val}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2"
-                          onClick={() => form.setValue('commission', val)}
-                        >
-                          {val}
-                        </Button>
-                      ))}
-                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="placa"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Placa</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ABC-1234" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nome_cliente"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome completo" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="valor_comissao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comissão (R$)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="valor_financiado"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Financiado (R$)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gestauto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gestauto</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Sim">Sim</SelectItem>
+                        <SelectItem value="Não">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -337,13 +248,6 @@ export function SaleFormModal({
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
               <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>

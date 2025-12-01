@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { AlertCircle, CheckCircle, AlertTriangle, Eye } from 'lucide-react'
-import { Header } from '@/components/Header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { salesService } from '@/services/salesService'
+import { ImportHistory } from '@/types'
 import {
   Table,
   TableBody,
@@ -12,214 +11,67 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { salesService } from '@/services/salesService'
-import { ImportHistory, ImportError } from '@/types'
-import { useToast } from '@/hooks/use-toast'
-import { Skeleton } from '@/components/ui/skeleton'
 
 export default function HistoricoImportacoes() {
   const [history, setHistory] = useState<ImportHistory[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedErrors, setSelectedErrors] = useState<ImportError[] | null>(
-    null,
-  )
-  const { toast } = useToast()
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const data = await salesService.getImportHistory()
-        setHistory(data)
-      } catch (error) {
-        console.error('Error fetching history:', error)
-        toast({
-          title: 'Erro ao carregar histórico',
-          description: 'Não foi possível conectar ao servidor.',
-          variant: 'destructive',
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchHistory()
-  }, [toast])
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Sucesso':
-        return (
-          <Badge className="bg-green-500 hover:bg-green-600">
-            <CheckCircle className="mr-1 h-3 w-3" /> Sucesso
-          </Badge>
-        )
-      case 'Sucesso Parcial':
-        return (
-          <Badge
-            variant="secondary"
-            className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-          >
-            <AlertTriangle className="mr-1 h-3 w-3" /> Parcial
-          </Badge>
-        )
-      case 'Falha':
-        return (
-          <Badge variant="destructive">
-            <AlertCircle className="mr-1 h-3 w-3" /> Falha
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
+    salesService.getImportHistory().then(setHistory).catch(console.error)
+  }, [])
 
   return (
-    <div className="flex flex-col h-full">
-      <Header title="Histórico de Importações" />
-      <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
-        <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+    <div className="space-y-6 animate-fade-in">
+      <h1 className="text-3xl font-bold tracking-tight">
+        Histórico de Importações
+      </h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Logs de Importação</CardTitle>
+        </CardHeader>
+        <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                <TableHead>Data/Hora da Importação</TableHead>
-                <TableHead>Tipo de Origem</TableHead>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Arquivo</TableHead>
+                <TableHead>Registros</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-center">
-                  Total de Registros
-                </TableHead>
-                <TableHead className="text-center">
-                  Registros Importados
-                </TableHead>
-                <TableHead className="text-center">Falhas</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20 rounded-full" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-4 w-8 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-4 w-8 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-4 w-8 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-8 w-8 ml-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : history.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    Nenhum histórico de importação encontrado.
+              {history.map((h) => (
+                <TableRow key={h.id}>
+                  <TableCell>
+                    {new Date(h.data_importacao).toLocaleString('pt-BR')}
+                  </TableCell>
+                  <TableCell>{h.arquivo}</TableCell>
+                  <TableCell>{h.registros}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        h.status === 'sucesso' ? 'default' : 'destructive'
+                      }
+                    >
+                      {h.status === 'sucesso' ? 'Sucesso' : 'Erro'}
+                    </Badge>
                   </TableCell>
                 </TableRow>
-              ) : (
-                history.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">
-                      {format(item.createdAt, "dd/MM/yyyy 'às' HH:mm", {
-                        locale: ptBR,
-                      })}
-                    </TableCell>
-                    <TableCell>{item.sourceType}</TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-center">
-                      {item.totalRecords}
-                    </TableCell>
-                    <TableCell className="text-center font-medium text-green-600">
-                      {item.importedRecords}
-                    </TableCell>
-                    <TableCell className="text-center font-medium text-red-600">
-                      {item.failedRecords}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.failedRecords > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedErrors(item.errorDetails)}
-                          className="h-8 px-2 lg:px-3"
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver Erros
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
+              ))}
+              {history.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
+                  >
+                    Nenhum histórico encontrado.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
-        </div>
-      </div>
-
-      <Dialog
-        open={!!selectedErrors}
-        onOpenChange={(open) => !open && setSelectedErrors(null)}
-      >
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" /> Detalhes dos Erros
-            </DialogTitle>
-            <DialogDescription>
-              Lista de registros que não puderam ser processados.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="h-[300px] w-full rounded-md border p-4 bg-muted/20">
-            {selectedErrors && selectedErrors.length > 0 ? (
-              <div className="space-y-4">
-                {selectedErrors.map((error, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col gap-1 p-3 bg-white rounded border border-l-4 border-l-destructive text-sm"
-                  >
-                    <div className="font-semibold text-destructive">
-                      Linha {error.row}
-                    </div>
-                    <div>{error.message}</div>
-                    {error.data && (
-                      <pre className="mt-1 bg-muted p-1 rounded text-xs overflow-x-auto">
-                        {JSON.stringify(error.data, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-muted-foreground py-8">
-                Nenhum detalhe disponível.
-              </div>
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   )
 }

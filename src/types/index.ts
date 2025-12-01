@@ -1,51 +1,42 @@
-export type OperationType = 'Venda' | 'Compra'
-
 export interface Sale {
-  id: string
-  date: Date
-  car: string
-  year: number
-  plate?: string
-  client: string
-  gestauto?: boolean
-  financedValue?: number
-  returnType?: 'R1' | 'R2' | 'R3' | 'R4' | 'R5'
-  type: OperationType
-  commission: number
-  createdAt: Date
-}
-
-export interface CommissionData {
-  month: number // 0-11
-  year: number
-  bonus: number
-  returns: number
-  transfers: number
-  surplus: number
-  extras: number
-  salary: number // Fixed default 1991
-}
-
-export interface SalesSummary {
-  totalSales: number
-  totalCommissions: number
-  totalGoal: number // Mocked goal
-  percentageGoal: number
+  id?: string
+  data_venda: string
+  carro: string
+  ano_carro: number
+  placa: string | null
+  nome_cliente: string
+  gestauto: string | null
+  valor_financiado: number | null
+  retorno: string | null
+  tipo_operacao: string
+  valor_comissao: number
+  created_at?: string
 }
 
 export interface ImportError {
   row: number
   message: string
-  data?: any
+  data: any
 }
 
 export interface ImportHistory {
   id: string
-  createdAt: Date
-  sourceType: 'Arquivo CSV' | 'Texto Colado'
-  status: 'Sucesso' | 'Sucesso Parcial' | 'Falha'
-  totalRecords: number
-  importedRecords: number
-  failedRecords: number
-  errorDetails: ImportError[]
+  data_importacao: string
+  arquivo: string
+  registros: number
+  status: 'sucesso' | 'erro'
+  usuario_id?: string
+}
+
+export interface ParsedSale {
+  data_venda: string
+  carro: string
+  ano_carro: number
+  placa: string | null
+  nome_cliente: string
+  gestauto: string | null
+  valor_financiado: number | null
+  retorno: string | null
+  tipo_operacao: string
+  valor_comissao: number
 }
