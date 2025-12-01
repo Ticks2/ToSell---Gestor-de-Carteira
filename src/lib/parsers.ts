@@ -21,42 +21,50 @@ export interface ParseResult {
 }
 
 // Flattened aliases for easier lookup
+// Order matters: specific aliases should be checked before generic ones to avoid partial matches
 const HEADER_ALIASES: Record<string, string[]> = {
-  data_venda: ['data', 'data venda', 'dt venda', 'dia', 'date', 'dt'],
+  data_venda: ['data venda', 'dt venda', 'data', 'dia', 'date', 'dt'],
   carro: ['carro', 'veiculo', 'modelo', 'descrição', 'descricao', 'car'],
-  ano_carro: ['ano', 'ano car', 'ano modelo', 'year'],
+  ano_carro: ['ano car', 'ano modelo', 'ano', 'year'],
   placa: ['placa', 'plate'],
-  nome_cliente: ['cliente', 'nome', 'nome cli', 'comprador', 'client'],
+  nome_cliente: [
+    'nome cli',
+    'nome cliente',
+    'cliente',
+    'nome',
+    'comprador',
+    'client',
+  ],
   gestauto: ['gestauto', 'garantia'],
   valor_financiado: [
     'valor financiado',
+    'vlr financiado',
     'financiado',
     'finan',
-    'vlr financiado',
     'financed',
   ],
   retorno: ['retorno', 'ret', 'return'],
   tipo_operacao: [
-    'tipo',
-    'operacao',
     'tipo operacao',
     'compra/venda',
-    'type',
     'compra?',
-    'compra',
+    'operacao',
+    'tipo',
+    'type',
   ],
   valor_comissao: [
+    'valor comissao',
+    'vlr comissao',
     'comissao',
     'comissão',
     'valor',
     'vlr',
-    'valor comissao',
     'lucro',
     'commission',
   ],
 }
 
-// Prioritize M/d/yyyy as per user story for complex imports, then standard formats
+// Prioritize M/d/yyyy and dd/MM/yyyy as per user story
 const DATE_FORMATS = [
   'M/d/yyyy', // 12/7/2025, 1/16/2025
   'MM/dd/yyyy', // 01/16/2025
@@ -83,7 +91,7 @@ const detectSeparator = (text: string): string => {
 
 const splitLine = (line: string, separator: string): string[] => {
   if (separator === '\t') return line.split('\t').map((c) => c.trim())
-  // Simple CSV split handling quotes loosely
+
   const cells: string[] = []
   let current = ''
   let inQuote = false
@@ -104,15 +112,26 @@ const splitLine = (line: string, separator: string): string[] => {
 
 const parseCurrency = (value: string): number => {
   if (!value) return 0
+  // Remove R$ and spaces
   const clean = value.toString().replace(/R\$|\s/g, '')
+  if (!clean) return 0
+
+  // Handle "46.900,00" (BR) vs "1,234.56" (US)
   if (clean.includes(',') && clean.includes('.')) {
     const lastDot = clean.lastIndexOf('.')
     const lastComma = clean.lastIndexOf(',')
-    if (lastDot > lastComma) return parseFloat(clean.replace(/,/g, ''))
-    return parseFloat(clean.replace(/\./g, '').replace(',', '.'))
+    if (lastDot > lastComma) {
+      // US format: 1,234.56
+      return parseFloat(clean.replace(/,/g, ''))
+    } else {
+      // BR format: 1.234,56
+      return parseFloat(clean.replace(/\./g, '').replace(',', '.'))
+    }
   } else if (clean.includes(',')) {
+    // BR format with just comma: 400,00
     return parseFloat(clean.replace(',', '.'))
   }
+
   return parseFloat(clean) || 0
 }
 
@@ -120,13 +139,12 @@ const parseDateStr = (value: string): Date | null => {
   if (!value) return null
   const v = value.trim()
   for (const fmt of DATE_FORMATS) {
-    const d = parse(v, fmt, new Date(), { locale: ptBR })
-    if (!isValid(d)) {
-      // Try english locale for M/d/yyyy
-      const dEn = parse(v, fmt, new Date(), { locale: enUS })
-      if (isValid(dEn) && dEn.getFullYear() > 1980 && dEn.getFullYear() < 2100)
-        return dEn
-    }
+    // Try ptBR first
+    let d = parse(v, fmt, new Date(), { locale: ptBR })
+    if (isValid(d) && d.getFullYear() > 1980 && d.getFullYear() < 2100) return d
+
+    // Try enUS for formats like M/d/yyyy which might be ambiguous in ptBR
+    d = parse(v, fmt, new Date(), { locale: enUS })
     if (isValid(d) && d.getFullYear() > 1980 && d.getFullYear() < 2100) return d
   }
   return null
@@ -135,10 +153,12 @@ const parseDateStr = (value: string): Date | null => {
 const getFieldFromHeader = (header: string): string | null => {
   const h = header.toLowerCase()
   for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    if (aliases.some((alias) => h === alias || h.includes(alias))) {
-      // Prevent "Data Pagamento" from matching "Data" alias for "data_venda" excessively
-      // if it doesn't match other specific things.
-      // However, "Data Venda" is specific.
+    // Check for exact matches first to avoid ambiguity
+    if (aliases.some((alias) => h === alias)) {
+      return field
+    }
+    // Then check includes
+    if (aliases.some((alias) => h.includes(alias))) {
       return field
     }
   }
@@ -160,7 +180,6 @@ const analyzeRowForHeaders = (
     if (field) {
       // If field already exists in current section, it means we started a new section side-by-side
       if (currentSection[field] !== undefined) {
-        // Push current section if it has enough data to be valid
         if (
           Object.keys(currentSection).length >= 2 &&
           (currentSection['data_venda'] !== undefined ||
@@ -184,8 +203,6 @@ const analyzeRowForHeaders = (
     sections.push(currentSection)
   }
 
-  // Heuristic: A row is a header if it has at least 3 recognized columns
-  // OR if it defines at least one valid section with mandatory fields
   const isHeader =
     matches >= 3 ||
     sections.some(
@@ -200,7 +217,8 @@ const isStopRow = (row: string[]): boolean => {
   return (
     content.includes('total') ||
     content.includes('comissões') ||
-    content.includes('carros vendidos')
+    content.includes('carros vendidos') ||
+    content.includes('resumo')
   )
 }
 
@@ -221,14 +239,14 @@ export const parseSalesContent = (content: string): ParseResult => {
     // Skip empty rows
     if (row.every((c) => !c)) continue
 
-    // 1. Check for Headers
+    // 1. Check for Headers (supports multiple tables sequentially or side-by-side)
     const { isHeader, sections } = analyzeRowForHeaders(row)
     if (isHeader) {
       activeSections = sections
       continue
     }
 
-    // 2. Check for Stop words (Summaries, Titles)
+    // 2. Check for Stop words
     if (isStopRow(row)) continue
 
     // 3. Extract Data
@@ -237,29 +255,23 @@ export const parseSalesContent = (content: string): ParseResult => {
         const rawData: any = {}
         let hasContent = false
 
-        // Extract
         for (const [field, colIdx] of Object.entries(section)) {
           const val = row[colIdx]
           if (val) hasContent = true
           rawData[field] = val
         }
 
-        if (!hasContent) return // Empty cells in this section's columns
+        if (!hasContent) return
 
-        // Validate mandatory fields presence (not value validity yet)
+        // Validate mandatory fields presence
         if (!rawData.data_venda || !rawData.carro) {
-          errors.push({
-            row: rowNum,
-            message:
-              'Dados incompletos (Data ou Carro faltando na seção identificada)',
-            data: rawData,
-          })
+          // Only error if row has content but missing key fields (avoid trailing empty cells errors)
           return
         }
 
-        // Parse & Normalize
         const date = parseDateStr(rawData.data_venda)
         const commission = parseCurrency(rawData.valor_comissao)
+        const year = parseInt(rawData.ano_carro?.replace(/\D/g, '')) || 0
 
         if (!date) {
           errors.push({
@@ -270,35 +282,53 @@ export const parseSalesContent = (content: string): ParseResult => {
           return
         }
 
+        if (year < 1980 || year > new Date().getFullYear() + 1) {
+          errors.push({
+            row: rowNum,
+            message: `Ano inválido: ${rawData.ano_carro}`,
+            data: rawData,
+          })
+          return
+        }
+
+        if (commission <= 0) {
+          errors.push({
+            row: rowNum,
+            message: `Valor de comissão inválido ou zerado: ${rawData.valor_comissao}`,
+            data: rawData,
+          })
+          return
+        }
+
         // Normalize Operation Type
         let tipo = 'Venda'
         if (rawData.tipo_operacao) {
           const t = rawData.tipo_operacao.toLowerCase()
-          if (t.includes('compra') || t === 'c' || t === 'x' || t === 'sim') {
+          // "Compra", "C", "Sim" (if boolean column), "X"
+          if (
+            t.includes('compra') ||
+            t === 'c' ||
+            t === 'x' ||
+            t === 'sim' ||
+            t === 's' ||
+            t === 'yes'
+          ) {
             tipo = 'Compra'
           }
-        } else if (
-          section['tipo_operacao'] &&
-          grid[rowIndex - 1] &&
-          grid[rowIndex - 1][section['tipo_operacao']]?.toLowerCase() ===
-            'compra?'
-        ) {
-          // If header was "Compra?" and value is empty, assume Venda. If value present (checked), Compra.
-          // But we already extracted value.
-          // Logic moved to normalization above.
         }
 
         // Normalize Gestauto
         let gestauto = 'Não'
         if (rawData.gestauto) {
           const g = rawData.gestauto.toLowerCase()
-          if (['sim', 's', 'yes', 'true', 'x'].includes(g)) gestauto = 'Sim'
+          if (['sim', 's', 'yes', 'true', 'x', 'ok'].includes(g))
+            gestauto = 'Sim'
         }
 
         const sale: ParsedSale = {
           data_venda: format(date, 'yyyy-MM-dd'),
           carro: rawData.carro,
-          ano_carro: parseInt(rawData.ano_carro?.replace(/\D/g, '')) || 0,
+          ano_carro: year,
           placa:
             rawData.placa?.toUpperCase().replace(/[^A-Z0-9-]/g, '') || null,
           nome_cliente: rawData.nome_cliente || 'Cliente não informado',

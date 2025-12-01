@@ -124,6 +124,7 @@ export const salesService = {
   },
 
   async importSales(salesData: any[]) {
+    // Uses the RPC function to clear and replace sales in a transaction-like manner
     const { error } = await supabase.rpc('replace_vendas', {
       p_vendas: salesData,
     })
@@ -144,7 +145,6 @@ export const salesService = {
 
     if (error) {
       console.error('Error logging import history:', error)
-      // We don't throw here to avoid blocking the user if just the log fails
     }
   },
 
