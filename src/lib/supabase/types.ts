@@ -15,6 +15,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          birth_date: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          birth_date?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          birth_date?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'clients_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['user_id']
+          },
+        ]
+      }
       companies: {
         Row: {
           code: string | null
@@ -76,6 +117,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           full_name: string | null
+          monthly_commission_target: number | null
           role: Database['public']['Enums']['user_role']
           user_id: string
         }
@@ -85,6 +127,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           full_name?: string | null
+          monthly_commission_target?: number | null
           role?: Database['public']['Enums']['user_role']
           user_id: string
         }
@@ -94,6 +137,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           full_name?: string | null
+          monthly_commission_target?: number | null
           role?: Database['public']['Enums']['user_role']
           user_id?: string
         }
@@ -111,6 +155,7 @@ export type Database = {
         Row: {
           ano_carro: number
           carro: string
+          client_id: string | null
           created_at: string
           data_venda: string
           gestauto: string | null
@@ -122,10 +167,12 @@ export type Database = {
           user_id: string | null
           valor_comissao: number
           valor_financiado: number | null
+          valor_venda: number | null
         }
         Insert: {
           ano_carro: number
           carro: string
+          client_id?: string | null
           created_at?: string
           data_venda: string
           gestauto?: string | null
@@ -137,10 +184,12 @@ export type Database = {
           user_id?: string | null
           valor_comissao: number
           valor_financiado?: number | null
+          valor_venda?: number | null
         }
         Update: {
           ano_carro?: number
           carro?: string
+          client_id?: string | null
           created_at?: string
           data_venda?: string
           gestauto?: string | null
@@ -152,8 +201,16 @@ export type Database = {
           user_id?: string | null
           valor_comissao?: number
           valor_financiado?: number | null
+          valor_venda?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: 'vendas_client_id_fkey'
+            columns: ['client_id']
+            isOneToOne: false
+            referencedRelation: 'clients'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'vendas_user_id_fkey'
             columns: ['user_id']

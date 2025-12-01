@@ -32,6 +32,7 @@ export interface Sale {
 }
 
 export interface CommissionData {
+  id?: string
   month: number // 0-11
   year: number
   bonus: number

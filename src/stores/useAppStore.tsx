@@ -10,6 +10,7 @@ import { Sale, CommissionData } from '@/types'
 import { isSameMonth, getMonth, getYear } from 'date-fns'
 import { salesService } from '@/services/salesService'
 import { profileService } from '@/services/profileService'
+import { commissionService } from '@/services/commissionService'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
 
@@ -26,7 +27,7 @@ interface AppState {
     year: number,
     month: number,
     data: Partial<CommissionData>,
-  ) => void
+  ) => Promise<void>
   updateMonthlyGoal: (target: number) => Promise<void>
   setSelectedDate: (date: Date) => void
   getMonthlyData: (date: Date) => {
@@ -53,11 +54,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
     setIsLoading(true)
     try {
-      const [salesData, profileData] = await Promise.all([
+      const [salesData, profileData, commissionsData] = await Promise.all([
         salesService.getSales(),
         profileService.getProfile(user.id),
+        commissionService.getCommissions(user.id),
       ])
       setSales(salesData)
+      setCommissions(commissionsData)
       if (profileData?.monthly_commission_target) {
         setMonthlyGoal(profileData.monthly_commission_target)
       }
@@ -114,7 +117,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [])
 
   const updateCommission = useCallback(
-    (year: number, month: number, data: Partial<CommissionData>) => {
+    async (year: number, month: number, data: Partial<CommissionData>) => {
+      if (!user) return
+
+      // Optimistic update
       setCommissions((prev) => {
         const existingIndex = prev.findIndex(
           (c) => c.year === year && c.month === month,
@@ -140,8 +146,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           ]
         }
       })
+
+      try {
+        await commissionService.upsertCommission(user.id, {
+          year,
+          month,
+          ...data,
+        })
+      } catch (error) {
+        console.error('Error updating commission:', error)
+        toast({
+          title: 'Erro ao salvar comissão',
+          description: 'Suas alterações podem não ter sido salvas.',
+          variant: 'destructive',
+        })
+        // Revert optimistic update would be complex here without keeping previous state
+        // For now, we just notify user
+      }
     },
-    [],
+    [user, toast],
   )
 
   const updateMonthlyGoal = useCallback(
@@ -168,20 +191,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const monthlySales = sales.filter((s) => isSameMonth(s.date, date))
 
-      // Calculate dynamic bonus based on vehicle count (Venda type only usually, but let's include all)
-      const vehiclesSold = monthlySales.filter((s) => s.type === 'Venda').length
-      let calculatedBonus = 0
-
-      if (vehiclesSold >= 10) calculatedBonus = 3000
-      else if (vehiclesSold >= 8) calculatedBonus = 2000
-      else if (vehiclesSold >= 7) calculatedBonus = 750
-
       const commission = commissions.find(
         (c) => c.year === year && c.month === month,
       ) || {
         year,
         month,
-        bonus: calculatedBonus, // Use calculated bonus as default if not set manually
+        bonus: 0,
         returns: 0,
         transfers: 0,
         surplus: 0,
@@ -189,18 +204,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         salary: 1991,
       }
 
-      // If existing bonus is 0 but calculated is > 0, we might want to suggest it,
-      // but for now let's override it dynamically for display or let commission hold manual override?
-      // Requirement: "The system must display the user's current bonus based on the total number of vehicles"
-      // So we will expose it separately or merge carefully.
-      // We'll merge it: if commission.bonus is 0 (default), use calculated.
-      // Actually, let's always return the calculated bonus as a separate field or override
-      const displayBonus =
-        commission.bonus !== 0 ? commission.bonus : calculatedBonus
-
       return {
         sales: monthlySales,
-        commissionData: { ...commission, bonus: displayBonus },
+        commissionData: commission,
       }
     },
     [sales, commissions],

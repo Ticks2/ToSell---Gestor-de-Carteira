@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { getMonth, getYear } from 'date-fns'
 import { Save } from 'lucide-react'
+import { CommissionData } from '@/types'
 
 export default function Comissoes() {
   const {
@@ -37,23 +38,20 @@ export default function Comissoes() {
   // Determine current tier for visual feedback
   const vehiclesSold = monthlySales.filter((s) => s.type === 'Venda').length
 
-  // Using calculated bonus from getMonthlyData which handles logic
-  const currentBonus = commissionData.bonus
+  // Using saved bonus
+  const currentBonus = commissionData.bonus || 0
 
   // Calculate total
   const totalMensal =
     totalSalesCommission +
-    (currentBonus || 0) +
+    currentBonus +
     (commissionData.returns || 0) +
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
     (commissionData.extras || 0) +
     (commissionData.salary || 1991)
 
-  const handleInputChange = (
-    field: keyof typeof commissionData,
-    value: string,
-  ) => {
+  const handleInputChange = (field: keyof CommissionData, value: string) => {
     updateCommission(getYear(selectedDate), getMonth(selectedDate), {
       [field]: Number(value),
     })
@@ -130,16 +128,15 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={currentBonus}
-                      readOnly
-                      disabled
-                      className="bg-muted"
+                      value={
+                        commissionData.bonus === 0 ? '' : commissionData.bonus
+                      }
+                      onChange={(e) =>
+                        handleInputChange('bonus', e.target.value)
+                      }
                       placeholder="0.00"
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Automático via volume de vendas
-                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Retorno</Label>
@@ -150,7 +147,11 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={commissionData.returns || ''}
+                      value={
+                        commissionData.returns === 0
+                          ? ''
+                          : commissionData.returns
+                      }
                       onChange={(e) =>
                         handleInputChange('returns', e.target.value)
                       }
@@ -183,7 +184,11 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={commissionData.transfers || ''}
+                      value={
+                        commissionData.transfers === 0
+                          ? ''
+                          : commissionData.transfers
+                      }
                       onChange={(e) =>
                         handleInputChange('transfers', e.target.value)
                       }
@@ -200,7 +205,11 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={commissionData.surplus || ''}
+                      value={
+                        commissionData.surplus === 0
+                          ? ''
+                          : commissionData.surplus
+                      }
                       onChange={(e) =>
                         handleInputChange('surplus', e.target.value)
                       }
@@ -217,7 +226,9 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={commissionData.extras || ''}
+                      value={
+                        commissionData.extras === 0 ? '' : commissionData.extras
+                      }
                       onChange={(e) =>
                         handleInputChange('extras', e.target.value)
                       }
@@ -296,33 +307,6 @@ export default function Comissoes() {
                   <p className="text-sm font-medium">
                     Progresso Atual: {vehiclesSold} vendas
                   </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-shadow border-none">
-              <CardHeader>
-                <CardTitle className="text-lg">Histórico Recente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center border-b pb-2 last:border-0"
-                    >
-                      <span className="text-sm text-muted-foreground">
-                        Mês Anterior {i}
-                      </span>
-                      <span className="font-medium">
-                        R${' '}
-                        {(totalMensal * (1 - i * 0.05)).toLocaleString(
-                          'pt-BR',
-                          { minimumFractionDigits: 2 },
-                        )}
-                      </span>
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>

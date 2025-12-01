@@ -15,17 +15,29 @@ import {
 import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
-  const { selectedDate, setSelectedDate, getMonthlyData, sales } = useAppStore()
+  const { selectedDate, setSelectedDate, getMonthlyData, sales, monthlyGoal } =
+    useAppStore()
 
-  const { sales: monthlySales } = useMemo(
+  const { sales: monthlySales, commissionData } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
   )
 
-  const totalCommissionsMonth = monthlySales.reduce(
+  const totalSalesCommission = monthlySales.reduce(
     (acc, curr) => acc + curr.commission,
     0,
   )
+
+  // Total Monthly Earnings (Sales Commission + All Bonuses/Extras)
+  const totalMonthlyEarnings =
+    totalSalesCommission +
+    (commissionData.bonus || 0) +
+    (commissionData.returns || 0) +
+    (commissionData.transfers || 0) +
+    (commissionData.surplus || 0) +
+    (commissionData.extras || 0) +
+    (commissionData.salary || 1991)
+
   const totalCommissionsYear = sales
     .filter((s) => s.date.getFullYear() === selectedDate.getFullYear())
     .reduce((acc, curr) => acc + curr.commission, 0)
@@ -48,9 +60,10 @@ export default function Dashboard() {
     return data
   }, [sales, selectedDate])
 
-  // Mock goal: 5000
-  const goal = 5000
-  const progress = Math.min((totalCommissionsMonth / goal) * 100, 100)
+  const progress = Math.min(
+    (totalMonthlyEarnings / (monthlyGoal || 5000)) * 100,
+    100,
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -100,19 +113,19 @@ export default function Dashboard() {
           <Card className="card-shadow border-none">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Comissões (Mês)
+                Total Mensal
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 R${' '}
-                {totalCommissionsMonth.toLocaleString('pt-BR', {
+                {totalMonthlyEarnings.toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                +12% desde o último mês
+                Inclui fixo e bônus
               </p>
             </CardContent>
           </Card>
@@ -133,7 +146,7 @@ export default function Dashboard() {
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Meta: R$ {goal.toLocaleString('pt-BR')}
+                Meta: R$ {(monthlyGoal || 5000).toLocaleString('pt-BR')}
               </p>
             </CardContent>
           </Card>
