@@ -1,4 +1,4 @@
-import { parse, isValid, format } from 'date-fns'
+import { parse, isValid, format, addDays } from 'date-fns'
 import { ptBR, enUS } from 'date-fns/locale'
 import { ImportError } from '@/types'
 
@@ -20,37 +20,59 @@ export interface ParseResult {
   errors: ImportError[]
 }
 
-// Flattened aliases for easier lookup
-// Order matters: specific aliases should be checked before generic ones to avoid partial matches
+// Expanded aliases with prioritization logic handled in getFieldFromHeader
 const HEADER_ALIASES: Record<string, string[]> = {
-  data_venda: ['data venda', 'dt venda', 'data', 'dia', 'date', 'dt'],
-  carro: ['carro', 'veiculo', 'modelo', 'descrição', 'descricao', 'car'],
-  ano_carro: ['ano car', 'ano modelo', 'ano', 'year'],
-  placa: ['placa', 'plate'],
-  nome_cliente: [
-    'nome cli',
-    'nome cliente',
-    'cliente',
-    'nome',
-    'comprador',
-    'client',
+  data_venda: [
+    'data venda',
+    'dt venda',
+    'data',
+    'date',
+    'dt',
+    'dia',
+    'dta',
+    'venda',
   ],
-  gestauto: ['gestauto', 'garantia'],
+  carro: [
+    'carro',
+    'veiculo',
+    'veículo',
+    'modelo',
+    'descrição',
+    'descricao',
+    'car',
+    'vehicle',
+    'desc',
+  ],
+  ano_carro: ['ano modelo', 'ano car', 'ano', 'year', 'anomodelo', 'model'],
+  placa: ['placa', 'plate', 'placas'],
+  nome_cliente: [
+    'nome cliente',
+    'nome cli',
+    'cliente',
+    'comprador',
+    'nome',
+    'client',
+    'customer',
+  ],
+  gestauto: ['gestauto', 'garantia', 'warranty', 'gest'],
   valor_financiado: [
     'valor financiado',
     'vlr financiado',
     'financiado',
     'finan',
     'financed',
+    'amount',
   ],
-  retorno: ['retorno', 'ret', 'return'],
+  retorno: ['retorno', 'ret', 'return', 'banco'],
   tipo_operacao: [
     'tipo operacao',
+    'tipo operação',
     'compra/venda',
-    'compra?',
     'operacao',
+    'operação',
     'tipo',
     'type',
+    'c/v',
   ],
   valor_comissao: [
     'valor comissao',
@@ -61,31 +83,45 @@ const HEADER_ALIASES: Record<string, string[]> = {
     'vlr',
     'lucro',
     'commission',
+    'profit',
+    'resultado',
   ],
 }
 
-// Prioritize M/d/yyyy and dd/MM/yyyy as per user story
 const DATE_FORMATS = [
-  'M/d/yyyy', // 12/7/2025, 1/16/2025
-  'MM/dd/yyyy', // 01/16/2025
-  'dd/MM/yyyy', // 16/01/2025 (BR Standard)
+  'dd/MM/yyyy', // 16/01/2025
+  'dd/MM/yy', // 16/01/25
   'd/M/yyyy', // 16/1/2025
-  'yyyy-MM-dd', // ISO
-  'dd-MM-yyyy',
+  'M/d/yyyy', // 12/7/2025
+  'MM/dd/yyyy', // 01/16/2025
+  'yyyy-MM-dd', // 2025-01-16
+  'dd-MM-yyyy', // 16-01-2025
+  'dd.MM.yyyy', // 16.01.2025
 ]
+
+// Flatten aliases for smarter matching (longest aliases first to avoid partial matches like 'Modelo' matching 'Ano Modelo')
+const SORTED_ALIASES = Object.entries(HEADER_ALIASES)
+  .flatMap(([field, aliases]) => aliases.map((alias) => ({ field, alias })))
+  .sort((a, b) => b.alias.length - a.alias.length)
 
 const detectSeparator = (text: string): string => {
   const lines = text.split(/\r?\n/).slice(0, 10)
   let semiCount = 0
   let commaCount = 0
   let tabCount = 0
+  let pipeCount = 0
+
   lines.forEach((l) => {
     semiCount += (l.match(/;/g) || []).length
     commaCount += (l.match(/,/g) || []).length
     tabCount += (l.match(/\t/g) || []).length
+    pipeCount += (l.match(/\|/g) || []).length
   })
-  if (tabCount > semiCount && tabCount > commaCount) return '\t'
-  if (semiCount > commaCount) return ';'
+
+  if (tabCount > semiCount && tabCount > commaCount && tabCount > pipeCount)
+    return '\t'
+  if (semiCount > commaCount && semiCount > pipeCount) return ';'
+  if (pipeCount > commaCount) return '|'
   return ','
 }
 
@@ -113,7 +149,7 @@ const splitLine = (line: string, separator: string): string[] => {
 const parseCurrency = (value: string): number => {
   if (!value) return 0
   // Remove R$ and spaces
-  const clean = value.toString().replace(/R\$|\s/g, '')
+  const clean = value.toString().replace(/R\$|\s|Rs/g, '')
   if (!clean) return 0
 
   // Handle "46.900,00" (BR) vs "1,234.56" (US)
@@ -138,30 +174,70 @@ const parseCurrency = (value: string): number => {
 const parseDateStr = (value: string): Date | null => {
   if (!value) return null
   const v = value.trim()
+
+  // Handle Excel Serial Date (e.g., 45321)
+  if (/^\d{5}$/.test(v)) {
+    const serial = parseInt(v)
+    // Excel base date is Dec 30, 1899
+    if (serial > 20000 && serial < 60000) {
+      try {
+        const date = addDays(new Date(1899, 11, 30), serial)
+        if (isValid(date)) return date
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+
   for (const fmt of DATE_FORMATS) {
     // Try ptBR first
     let d = parse(v, fmt, new Date(), { locale: ptBR })
     if (isValid(d) && d.getFullYear() > 1980 && d.getFullYear() < 2100) return d
 
-    // Try enUS for formats like M/d/yyyy which might be ambiguous in ptBR
+    // Try enUS
     d = parse(v, fmt, new Date(), { locale: enUS })
     if (isValid(d) && d.getFullYear() > 1980 && d.getFullYear() < 2100) return d
   }
   return null
 }
 
-const getFieldFromHeader = (header: string): string | null => {
-  const h = header.toLowerCase()
-  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    // Check for exact matches first to avoid ambiguity
-    if (aliases.some((alias) => h === alias)) {
-      return field
-    }
-    // Then check includes
-    if (aliases.some((alias) => h.includes(alias))) {
-      return field
-    }
+const parseYear = (value: string): number => {
+  if (!value) return 0
+  const clean = value.toString().trim()
+
+  // Try to find a 4-digit year starting with 19 or 20
+  const fourDigitMatch = clean.match(/\b(19|20)\d{2}\b/)
+  if (fourDigitMatch) return parseInt(fourDigitMatch[0])
+
+  // Handle "23/24", "2023/2024" patterns often found in car models
+  if (clean.includes('/')) {
+    const parts = clean.split('/')
+    const lastPart = parts[parts.length - 1].trim()
+    if (lastPart.length === 4) return parseInt(lastPart)
+    if (lastPart.length === 2) return 2000 + parseInt(lastPart)
   }
+
+  // Fallback: extracts only digits
+  const digits = clean.replace(/\D/g, '')
+  if (digits.length === 4) return parseInt(digits)
+  if (digits.length === 2) return 2000 + parseInt(digits)
+
+  return 0
+}
+
+const getFieldFromHeader = (header: string): string | null => {
+  if (!header) return null
+  const h = header.toLowerCase().trim()
+
+  // Use sorted aliases to prioritize longer matches first
+  // e.g. "Ano Modelo" matches 'ano_carro' alias "ano modelo" BEFORE it matches 'carro' alias "modelo"
+  for (const { field, alias } of SORTED_ALIASES) {
+    if (h === alias) return field // Exact match
+  }
+  for (const { field, alias } of SORTED_ALIASES) {
+    if (h.includes(alias)) return field // Partial match
+  }
+
   return null
 }
 
@@ -172,14 +248,17 @@ const analyzeRowForHeaders = (
 ): { isHeader: boolean; sections: Section[] } => {
   const sections: Section[] = []
   let currentSection: Section = {}
-  let matches = 0
+  let foundFieldsInRow = 0
 
   row.forEach((cell, idx) => {
-    if (!cell) return
     const field = getFieldFromHeader(cell)
     if (field) {
-      // If field already exists in current section, it means we started a new section side-by-side
+      foundFieldsInRow++
+
+      // If this field already exists in the current section, or if we have a gap that suggests a new table
+      // We assume a new table starts if we see a duplicate core field like 'data_venda' or 'carro'
       if (currentSection[field] !== undefined) {
+        // Push the previous section if it has minimal required fields
         if (
           Object.keys(currentSection).length >= 2 &&
           (currentSection['data_venda'] !== undefined ||
@@ -190,11 +269,10 @@ const analyzeRowForHeaders = (
         currentSection = {}
       }
       currentSection[field] = idx
-      matches++
     }
   })
 
-  // Push last section
+  // Push the last section
   if (
     Object.keys(currentSection).length >= 2 &&
     (currentSection['data_venda'] !== undefined ||
@@ -203,23 +281,19 @@ const analyzeRowForHeaders = (
     sections.push(currentSection)
   }
 
-  const isHeader =
-    matches >= 3 ||
-    sections.some(
-      (s) => s['data_venda'] !== undefined && s['carro'] !== undefined,
-    )
+  // Strict header detection: Must have found at least 2 mapped fields in valid sections
+  const isHeader = sections.length > 0
 
-  return { isHeader, sections: isHeader ? sections : [] }
+  return { isHeader, sections }
 }
 
 const isStopRow = (row: string[]): boolean => {
-  const content = row.join(' ').toLowerCase()
-  return (
-    content.includes('total') ||
-    content.includes('comissões') ||
-    content.includes('carros vendidos') ||
-    content.includes('resumo')
-  )
+  // Only stop if the FIRST non-empty cell clearly indicates a summary row
+  const firstContent = row.find((c) => c.trim().length > 0)?.toLowerCase()
+  if (!firstContent) return false
+
+  const stopWords = ['total', 'resumo', 'quantidade', 'subtotal']
+  return stopWords.some((w) => firstContent.startsWith(w))
 }
 
 export const parseSalesContent = (content: string): ParseResult => {
@@ -231,22 +305,29 @@ export const parseSalesContent = (content: string): ParseResult => {
   const errors: ImportError[] = []
 
   let activeSections: Section[] = []
+  let hasFoundHeader = false
 
   for (let rowIndex = 0; rowIndex < grid.length; rowIndex++) {
     const row = grid[rowIndex]
     const rowNum = rowIndex + 1
 
     // Skip empty rows
-    if (row.every((c) => !c)) continue
+    if (row.every((c) => !c.trim())) continue
 
-    // 1. Check for Headers (supports multiple tables sequentially or side-by-side)
+    // 1. Check for Headers
     const { isHeader, sections } = analyzeRowForHeaders(row)
     if (isHeader) {
+      // Only replace active sections if the new header row looks richer or valid
+      // This prevents a random row with one 'Data' word from breaking the context
       activeSections = sections
+      hasFoundHeader = true
       continue
     }
 
-    // 2. Check for Stop words
+    // If we haven't found a header yet, we can't parse data reliably
+    if (!hasFoundHeader) continue
+
+    // 2. Check for Stop words (summary rows)
     if (isStopRow(row)) continue
 
     // 3. Extract Data
@@ -254,38 +335,55 @@ export const parseSalesContent = (content: string): ParseResult => {
       activeSections.forEach((section) => {
         const rawData: any = {}
         let hasContent = false
+        let missingMandatory = false
+
+        // Check mandatory fields first
+        if (
+          section['data_venda'] === undefined ||
+          section['carro'] === undefined
+        ) {
+          // Incomplete section definition, skip
+          return
+        }
 
         for (const [field, colIdx] of Object.entries(section)) {
           const val = row[colIdx]
-          if (val) hasContent = true
-          rawData[field] = val
+          if (val && val.trim()) {
+            hasContent = true
+            rawData[field] = val.trim()
+          }
         }
 
+        // If the row is empty in this section's columns, skip
         if (!hasContent) return
 
-        // Validate mandatory fields presence
+        // Basic Validation
         if (!rawData.data_venda || !rawData.carro) {
-          // Only error if row has content but missing key fields (avoid trailing empty cells errors)
+          // Skip partial rows silently - often artifacts or comments
           return
         }
 
         const date = parseDateStr(rawData.data_venda)
         const commission = parseCurrency(rawData.valor_comissao)
-        const year = parseInt(rawData.ano_carro?.replace(/\D/g, '')) || 0
+        const year = parseYear(rawData.ano_carro)
 
         if (!date) {
-          errors.push({
-            row: rowNum,
-            message: `Data inválida: ${rawData.data_venda}`,
-            data: rawData,
-          })
+          // Don't error immediately if it looks like a non-data row,
+          // but if it has a car name, it's likely a sale with bad date
+          if (rawData.carro.length > 3) {
+            errors.push({
+              row: rowNum,
+              message: `Data inválida ou ausente: "${rawData.data_venda}"`,
+              data: rawData,
+            })
+          }
           return
         }
 
         if (year < 1980 || year > new Date().getFullYear() + 1) {
           errors.push({
             row: rowNum,
-            message: `Ano inválido: ${rawData.ano_carro}`,
+            message: `Ano inválido: "${rawData.ano_carro}"`,
             data: rawData,
           })
           return
@@ -294,7 +392,7 @@ export const parseSalesContent = (content: string): ParseResult => {
         if (commission <= 0) {
           errors.push({
             row: rowNum,
-            message: `Valor de comissão inválido ou zerado: ${rawData.valor_comissao}`,
+            message: `Valor de comissão inválido: "${rawData.valor_comissao}"`,
             data: rawData,
           })
           return
@@ -304,14 +402,12 @@ export const parseSalesContent = (content: string): ParseResult => {
         let tipo = 'Venda'
         if (rawData.tipo_operacao) {
           const t = rawData.tipo_operacao.toLowerCase()
-          // "Compra", "C", "Sim" (if boolean column), "X"
           if (
             t.includes('compra') ||
             t === 'c' ||
             t === 'x' ||
             t === 'sim' ||
-            t === 's' ||
-            t === 'yes'
+            t === 's'
           ) {
             tipo = 'Compra'
           }
@@ -321,7 +417,7 @@ export const parseSalesContent = (content: string): ParseResult => {
         let gestauto = 'Não'
         if (rawData.gestauto) {
           const g = rawData.gestauto.toLowerCase()
-          if (['sim', 's', 'yes', 'true', 'x', 'ok'].includes(g))
+          if (['sim', 's', 'yes', 'true', 'x', 'ok', 'com'].includes(g))
             gestauto = 'Sim'
         }
 

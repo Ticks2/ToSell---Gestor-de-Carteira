@@ -15,7 +15,6 @@ import {
   AlertCircle,
   FileSpreadsheet,
   CheckCircle,
-  AlertTriangle,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
@@ -122,7 +121,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
           currentErrors.push({
             row: 0,
             message:
-              'Não foi possível identificar nenhum registro de venda válido no conteúdo fornecido.',
+              'Não foi possível identificar nenhum registro de venda válido. Verifique se o cabeçalho contém "Data" e "Carro".',
           })
           failedRecords = 1
         }
@@ -223,7 +222,8 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
         <DialogHeader>
           <DialogTitle>Importar Vendas</DialogTitle>
           <DialogDescription>
-            Importe seus dados via arquivo CSV ou cole o texto diretamente.
+            Importe seus dados via arquivo CSV ou cole o texto diretamente
+            (Excel, etc).
           </DialogDescription>
         </DialogHeader>
 
@@ -261,7 +261,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
                       Selecione um arquivo
                     </label>
                     <p>ou arraste e solte aqui</p>
-                    <p className="text-xs">CSV, TXT ou Excel (CSV)</p>
+                    <p className="text-xs">CSV ou TXT</p>
                   </div>
                   <input
                     id="file-upload"
