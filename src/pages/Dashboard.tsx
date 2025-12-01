@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { format, subMonths, getYear, getMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, DollarSign, Users, Target } from 'lucide-react'
@@ -25,39 +25,42 @@ export default function Dashboard() {
   } = useAppStore()
 
   // Data for current selected month
-  const { sales: monthlySales, commissionData } = useMemo(
+  const { sales: monthlySales } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
   )
 
   // Calculate total earnings for a specific month/year
-  const getMonthTotalEarnings = (year: number, month: number) => {
-    const monthSales = sales.filter(
-      (s) => getYear(s.date) === year && getMonth(s.date) === month,
-    )
-    const salesTotal = monthSales.reduce((acc, s) => acc + s.commission, 0)
+  const getMonthTotalEarnings = useCallback(
+    (year: number, month: number) => {
+      const monthSales = sales.filter(
+        (s) => getYear(s.date) === year && getMonth(s.date) === month,
+      )
+      const salesTotal = monthSales.reduce((acc, s) => acc + s.commission, 0)
 
-    const commissionEntry = commissions.find(
-      (c) => c.year === year && c.month === month,
-    ) || {
-      bonus: 0,
-      returns: 0,
-      transfers: 0,
-      surplus: 0,
-      extras: 0,
-      salary: 1991,
-    }
+      const commissionEntry = commissions.find(
+        (c) => c.year === year && c.month === month,
+      ) || {
+        bonus: 0,
+        returns: 0,
+        transfers: 0,
+        surplus: 0,
+        extras: 0,
+        salary: 1991,
+      }
 
-    return (
-      salesTotal +
-      (commissionEntry.bonus || 0) +
-      (commissionEntry.returns || 0) +
-      (commissionEntry.transfers || 0) +
-      (commissionEntry.surplus || 0) +
-      (commissionEntry.extras || 0) +
-      (commissionEntry.salary || 1991)
-    )
-  }
+      return (
+        salesTotal +
+        (commissionEntry.bonus || 0) +
+        (commissionEntry.returns || 0) +
+        (commissionEntry.transfers || 0) +
+        (commissionEntry.surplus || 0) +
+        (commissionEntry.extras || 0) +
+        (commissionEntry.salary || 1991)
+      )
+    },
+    [sales, commissions],
+  )
 
   // Total Annual Commission (Sum of all monthly totals for the selected year)
   const totalAnnualCommissions = useMemo(() => {
@@ -67,7 +70,7 @@ export default function Dashboard() {
       total += getMonthTotalEarnings(year, month)
     }
     return total
-  }, [selectedDate, sales, commissions])
+  }, [selectedDate, getMonthTotalEarnings])
 
   // Total Monthly Earnings for current selection
   const totalMonthlyEarnings = getMonthTotalEarnings(
@@ -88,7 +91,7 @@ export default function Dashboard() {
       })
     }
     return data
-  }, [selectedDate, sales, commissions])
+  }, [selectedDate, getMonthTotalEarnings])
 
   // History Data (Last 3 months)
   const historyData = useMemo(() => {
@@ -108,7 +111,7 @@ export default function Dashboard() {
         vehicles,
       }
     })
-  }, [selectedDate, sales, commissions])
+  }, [selectedDate, sales, getMonthTotalEarnings])
 
   const progress = Math.min(
     (totalMonthlyEarnings / (monthlyGoal || 5000)) * 100,
