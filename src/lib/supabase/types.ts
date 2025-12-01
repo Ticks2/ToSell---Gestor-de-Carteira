@@ -15,13 +15,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      vendas: {
+        Row: {
+          ano_carro: number
+          carro: string
+          created_at: string
+          data_venda: string
+          gestauto: string | null
+          id: string
+          nome_cliente: string
+          placa: string | null
+          retorno: string | null
+          tipo_operacao: string
+          valor_comissao: number
+          valor_financiado: number | null
+        }
+        Insert: {
+          ano_carro: number
+          carro: string
+          created_at?: string
+          data_venda: string
+          gestauto?: string | null
+          id?: string
+          nome_cliente: string
+          placa?: string | null
+          retorno?: string | null
+          tipo_operacao?: string
+          valor_comissao: number
+          valor_financiado?: number | null
+        }
+        Update: {
+          ano_carro?: number
+          carro?: string
+          created_at?: string
+          data_venda?: string
+          gestauto?: string | null
+          id?: string
+          nome_cliente?: string
+          placa?: string | null
+          retorno?: string | null
+          tipo_operacao?: string
+          valor_comissao?: number
+          valor_financiado?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_vendas: { Args: { p_vendas: Json }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
