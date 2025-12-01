@@ -2,6 +2,7 @@ import { Bell, User, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Input } from '@/components/ui/input'
+import { ToggleTheme } from '@/components/ui/toggle-theme'
 
 interface HeaderProps {
   title: string
@@ -27,6 +28,7 @@ export function Header({ title }: HeaderProps) {
         </div>
       </div>
       <div className="ml-auto flex items-center gap-2">
+        <ToggleTheme />
         <Button
           variant="ghost"
           size="icon"

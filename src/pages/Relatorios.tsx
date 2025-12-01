@@ -76,12 +76,10 @@ export default function Relatorios() {
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={sales
-                        .slice(0, 12)
-                        .map((s, i) => ({
-                          name: `Mês ${i + 1}`,
-                          total: Math.floor(Math.random() * 10000),
-                        }))}
+                      data={sales.slice(0, 12).map((s, i) => ({
+                        name: `Mês ${i + 1}`,
+                        total: Math.floor(Math.random() * 10000),
+                      }))}
                     >
                       <XAxis
                         dataKey="name"

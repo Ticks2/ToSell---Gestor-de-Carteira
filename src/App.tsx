@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
+import { ThemeProvider } from 'next-themes'
 import Dashboard from './pages/Dashboard'
 import VendasMensais from './pages/VendasMensais'
 import Comissoes from './pages/Comissoes'
@@ -25,33 +26,35 @@ const App = () => (
   <BrowserRouter
     future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
   >
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/vendas" element={<VendasMensais />} />
-            <Route path="/comissoes" element={<Comissoes />} />
-            <Route path="/relatorios" element={<Relatorios />} />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
             <Route
-              path="/historico-importacoes"
-              element={<HistoricoImportacoes />}
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
             />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </AuthProvider>
-    </TooltipProvider>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/vendas" element={<VendasMensais />} />
+              <Route path="/comissoes" element={<Comissoes />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+              <Route
+                path="/historico-importacoes"
+                element={<HistoricoImportacoes />}
+              />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </BrowserRouter>
 )
 
