@@ -106,14 +106,10 @@ const useCrmStore = create<CrmState>((set, get) => ({
   },
 
   addInteraction: async (interaction) => {
-    try {
-      const newInteraction = await crmService.createInteraction(interaction)
-      set((state) => ({
-        interactions: [newInteraction, ...state.interactions],
-      }))
-    } catch (error) {
-      throw error
-    }
+    const newInteraction = await crmService.createInteraction(interaction)
+    set((state) => ({
+      interactions: [newInteraction, ...state.interactions],
+    }))
   },
 
   updateInteractionStatus: async (id, status) => {
@@ -134,14 +130,10 @@ const useCrmStore = create<CrmState>((set, get) => ({
   },
 
   createAlert: async (alert) => {
-    try {
-      const newAlert = await crmService.createAlert(alert)
-      set((state) => ({
-        alerts: [...state.alerts, newAlert],
-      }))
-    } catch (error) {
-      throw error
-    }
+    const newAlert = await crmService.createAlert(alert)
+    set((state) => ({
+      alerts: [...state.alerts, newAlert],
+    }))
   },
 
   dismissAlert: async (id) => {
@@ -156,12 +148,8 @@ const useCrmStore = create<CrmState>((set, get) => ({
   },
 
   setClientStatus: async (clientId, status) => {
-    try {
-      await clientService.updateClient(clientId, { status })
-      await get().fetchClients() // Refresh lists
-    } catch (error) {
-      throw error
-    }
+    await clientService.updateClient(clientId, { status })
+    await get().fetchClients() // Refresh lists
   },
 }))
 
