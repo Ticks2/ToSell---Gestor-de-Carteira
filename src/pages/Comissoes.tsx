@@ -213,7 +213,7 @@ export default function Comissoes() {
                     <span>Meta Premium: R$ 5.000,00 (+R$ 1.500 bônus)</span>
                   </li>
                 </ul>
-                <div className="mt-4 p-3 bg-white/50 rounded-md text-xs text-muted-foreground italic">
+                <div className="mt-4 p-3 bg-card/50 rounded-md text-xs text-muted-foreground italic">
                   * Bônus não aplicados automaticamente. Insira manualmente no
                   campo ao lado.
                 </div>

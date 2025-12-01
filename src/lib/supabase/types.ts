@@ -15,6 +15,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       import_history: {
         Row: {
           created_at: string
@@ -48,6 +69,44 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          company_id: string | null
+          created_at: string
+          full_name: string | null
+          role: Database['public']['Enums']['user_role']
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          company_id?: string | null
+          created_at?: string
+          full_name?: string | null
+          role?: Database['public']['Enums']['user_role']
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          company_id?: string | null
+          created_at?: string
+          full_name?: string | null
+          role?: Database['public']['Enums']['user_role']
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_company_id_fkey'
+            columns: ['company_id']
+            isOneToOne: false
+            referencedRelation: 'companies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       vendas: {
         Row: {
           ano_carro: number
@@ -60,6 +119,7 @@ export type Database = {
           placa: string | null
           retorno: string | null
           tipo_operacao: string
+          user_id: string | null
           valor_comissao: number
           valor_financiado: number | null
         }
@@ -74,6 +134,7 @@ export type Database = {
           placa?: string | null
           retorno?: string | null
           tipo_operacao?: string
+          user_id?: string | null
           valor_comissao: number
           valor_financiado?: number | null
         }
@@ -88,10 +149,19 @@ export type Database = {
           placa?: string | null
           retorno?: string | null
           tipo_operacao?: string
+          user_id?: string | null
           valor_comissao?: number
           valor_financiado?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'vendas_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['user_id']
+          },
+        ]
       }
     }
     Views: {
@@ -101,7 +171,7 @@ export type Database = {
       replace_vendas: { Args: { p_vendas: Json }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      user_role: 'individual' | 'manager' | 'seller'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -228,6 +298,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ['individual', 'manager', 'seller'],
+    },
   },
 } as const

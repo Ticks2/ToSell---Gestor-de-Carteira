@@ -1,8 +1,14 @@
 import { Bell, User, Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Input } from '@/components/ui/input'
 import { ToggleTheme } from '@/components/ui/toggle-theme'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface HeaderProps {
   title: string
@@ -36,13 +42,20 @@ export function Header({ title }: HeaderProps) {
         >
           <Bell className="h-5 w-5" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"
-        >
-          <User className="h-5 w-5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link to="/account">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <User className="h-5 w-5" />
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Minha Conta</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   )

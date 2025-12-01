@@ -66,7 +66,7 @@ export default function HistoricoImportacoes() {
         return (
           <Badge
             variant="secondary"
-            className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+            className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-200"
           >
             <AlertTriangle className="mr-1 h-3 w-3" /> Parcial
           </Badge>
@@ -86,10 +86,10 @@ export default function HistoricoImportacoes() {
     <div className="flex flex-col h-full">
       <Header title="Histórico de Importações" />
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
-        <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-md border bg-card shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead>Data/Hora da Importação</TableHead>
                 <TableHead>Tipo de Origem</TableHead>
                 <TableHead>Status</TableHead>
@@ -152,10 +152,10 @@ export default function HistoricoImportacoes() {
                     <TableCell className="text-center">
                       {item.totalRecords}
                     </TableCell>
-                    <TableCell className="text-center font-medium text-green-600">
+                    <TableCell className="text-center font-medium text-green-600 dark:text-green-400">
                       {item.importedRecords}
                     </TableCell>
-                    <TableCell className="text-center font-medium text-red-600">
+                    <TableCell className="text-center font-medium text-red-600 dark:text-red-400">
                       {item.failedRecords}
                     </TableCell>
                     <TableCell className="text-right">
@@ -198,7 +198,7 @@ export default function HistoricoImportacoes() {
                 {selectedErrors.map((error, index) => (
                   <div
                     key={index}
-                    className="flex flex-col gap-1 p-3 bg-white rounded border border-l-4 border-l-destructive text-sm"
+                    className="flex flex-col gap-1 p-3 bg-card rounded border border-l-4 border-l-destructive text-sm"
                   >
                     <div className="font-semibold text-destructive">
                       Linha {error.row}

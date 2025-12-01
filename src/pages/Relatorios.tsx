@@ -161,7 +161,7 @@ export default function Relatorios() {
           </TabsContent>
 
           <TabsContent value="cliente">
-            <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground bg-white rounded-lg border border-dashed">
+            <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground bg-card rounded-lg border border-dashed">
               <p>Selecione um cliente para gerar o relatório detalhado.</p>
               <Button variant="link" className="mt-2">
                 Buscar Cliente

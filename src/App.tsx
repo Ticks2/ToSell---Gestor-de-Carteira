@@ -11,6 +11,7 @@ import Relatorios from './pages/Relatorios'
 import HistoricoImportacoes from './pages/HistoricoImportacoes'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
+import Account from './pages/Account'
 import Layout from './components/Layout'
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
@@ -26,7 +27,7 @@ const App = () => (
   <BrowserRouter
     future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
   >
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
@@ -49,6 +50,7 @@ const App = () => (
                 path="/historico-importacoes"
                 element={<HistoricoImportacoes />}
               />
+              <Route path="/account" element={<Account />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

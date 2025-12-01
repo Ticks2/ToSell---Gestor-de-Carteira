@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { MonitorCog, MoonStar, Sun } from 'lucide-react'
+import { MoonStar, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 import { cn } from '@/lib/utils'
@@ -17,14 +17,12 @@ export function ToggleTheme() {
       <div className="flex items-center gap-1 rounded-full border bg-card p-1 shadow-sm">
         <div className="h-8 w-8 rounded-full bg-muted/20 animate-pulse" />
         <div className="h-8 w-8 rounded-full bg-muted/20 animate-pulse" />
-        <div className="h-8 w-8 rounded-full bg-muted/20 animate-pulse" />
       </div>
     )
   }
 
   const items = [
     { value: 'light', label: 'Light', icon: Sun },
-    { value: 'system', label: 'System', icon: MonitorCog },
     { value: 'dark', label: 'Dark', icon: MoonStar },
   ]
 

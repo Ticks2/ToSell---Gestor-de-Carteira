@@ -158,7 +158,7 @@ export default function VendasMensais() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-lg shadow-sm border">
+        <div className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-lg shadow-sm border">
           <div className="w-full md:w-auto">
             <ToggleGroup
               type="single"
@@ -174,17 +174,17 @@ export default function VendasMensais() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar cliente, carro ou placa..."
-              className="pl-9"
+              className="pl-9 bg-background"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-md border bg-card shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead>Data</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Carro</TableHead>
@@ -234,7 +234,7 @@ export default function VendasMensais() {
                       <TableCell>{format(sale.date, 'dd/MM/yyyy')}</TableCell>
                       <TableCell>
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${sale.type === 'Venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${sale.type === 'Venda' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'}`}
                         >
                           {sale.type}
                         </span>

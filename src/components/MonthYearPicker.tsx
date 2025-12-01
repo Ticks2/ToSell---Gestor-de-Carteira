@@ -24,12 +24,12 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
   const handleNext = () => onChange(addMonths(date, 1))
 
   return (
-    <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
+    <div className="flex items-center gap-2 bg-card p-1 rounded-lg border shadow-sm">
       <Button
         variant="ghost"
         size="icon"
         onClick={handlePrevious}
-        className="h-8 w-8"
+        className="h-8 w-8 hover:bg-muted"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
@@ -39,7 +39,7 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
           <Button
             variant="ghost"
             className={cn(
-              'w-[180px] justify-start text-left font-medium h-8',
+              'w-[180px] justify-start text-left font-medium h-8 hover:bg-muted',
               !date && 'text-muted-foreground',
             )}
           >
@@ -52,7 +52,6 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          {/* Simple implementation for now, full month picker is complex */}
           <div className="p-4 text-sm text-center text-muted-foreground">
             Use as setas para navegar
           </div>
@@ -63,7 +62,7 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
         variant="ghost"
         size="icon"
         onClick={handleNext}
-        className="h-8 w-8"
+        className="h-8 w-8 hover:bg-muted"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>
