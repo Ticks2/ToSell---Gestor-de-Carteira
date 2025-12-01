@@ -130,21 +130,26 @@ export default function VendasMensais() {
     <div className="flex flex-col h-full">
       <Header title="Vendas Mensais" />
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
             <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
-            <div className="text-sm text-muted-foreground">
-              {filteredSales.length} registros encontrados
-            </div>
+            <span className="text-sm text-muted-foreground ml-2 hidden md:inline-block border-l pl-3 h-6 leading-6">
+              {filteredSales.length} registros
+            </span>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
             <Button
               variant="outline"
               onClick={() => setIsImportModalOpen(true)}
+              className="whitespace-nowrap"
             >
               <Upload className="mr-2 h-4 w-4" /> Importar CSV
             </Button>
-            <Button variant="outline" onClick={() => console.log('Export')}>
+            <Button
+              variant="outline"
+              onClick={() => console.log('Export')}
+              className="whitespace-nowrap"
+            >
               <Download className="mr-2 h-4 w-4" /> Exportar
             </Button>
             <Button
@@ -152,6 +157,7 @@ export default function VendasMensais() {
                 setEditingSale(undefined)
                 setIsModalOpen(true)
               }}
+              className="whitespace-nowrap"
             >
               <Plus className="mr-2 h-4 w-4" /> Adicionar Venda
             </Button>

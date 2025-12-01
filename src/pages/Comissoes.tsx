@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { getMonth, getYear, subMonths, format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Save, TrendingUp } from 'lucide-react'
+import { getMonth, getYear } from 'date-fns'
+import { Save } from 'lucide-react'
 import { CommissionData } from '@/types'
 
 export default function Comissoes() {
@@ -61,29 +60,6 @@ export default function Comissoes() {
   const handleSaveGoal = () => {
     updateMonthlyGoal(Number(goalInput))
   }
-
-  // Get last 3 months data for history
-  const historyData = useMemo(() => {
-    return [1, 2, 3].map((monthsBack) => {
-      const date = subMonths(selectedDate, monthsBack)
-      const { sales, commissionData: cd } = getMonthlyData(date)
-      const totalSales = sales.reduce((acc, s) => acc + s.commission, 0)
-      const total =
-        totalSales +
-        (cd.bonus || 0) +
-        (cd.returns || 0) +
-        (cd.transfers || 0) +
-        (cd.surplus || 0) +
-        (cd.extras || 0) +
-        (cd.salary || 1991)
-
-      return {
-        date,
-        total,
-        vehicles: sales.filter((s) => s.type === 'Venda').length,
-      }
-    })
-  }, [selectedDate, getMonthlyData])
 
   return (
     <div className="flex flex-col h-full">
@@ -347,36 +323,6 @@ export default function Comissoes() {
                 </div>
               </CardContent>
             </Card>
-
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Histórico de resultados Recente
-              </h3>
-              <div className="space-y-3">
-                {historyData.map((history) => (
-                  <div
-                    key={history.date.toString()}
-                    className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm"
-                  >
-                    <div>
-                      <p className="font-medium capitalize">
-                        {format(history.date, 'MMMM yyyy', { locale: ptBR })}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {history.vehicles} veículos
-                      </p>
-                    </div>
-                    <span className="font-bold text-lg">
-                      {history.total.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>

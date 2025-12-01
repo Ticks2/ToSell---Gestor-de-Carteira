@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { format } from 'date-fns'
+import { format, subMonths, getYear, getMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, DollarSign, Users, Target } from 'lucide-react'
 import { XAxis, YAxis, AreaChart, Area } from 'recharts'
@@ -15,50 +15,100 @@ import {
 import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
-  const { selectedDate, setSelectedDate, getMonthlyData, sales, monthlyGoal } =
-    useAppStore()
+  const {
+    selectedDate,
+    setSelectedDate,
+    getMonthlyData,
+    sales,
+    commissions,
+    monthlyGoal,
+  } = useAppStore()
 
+  // Data for current selected month
   const { sales: monthlySales, commissionData } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
   )
 
-  const totalSalesCommission = monthlySales.reduce(
-    (acc, curr) => acc + curr.commission,
-    0,
+  // Calculate total earnings for a specific month/year
+  const getMonthTotalEarnings = (year: number, month: number) => {
+    const monthSales = sales.filter(
+      (s) => getYear(s.date) === year && getMonth(s.date) === month,
+    )
+    const salesTotal = monthSales.reduce((acc, s) => acc + s.commission, 0)
+
+    const commissionEntry = commissions.find(
+      (c) => c.year === year && c.month === month,
+    ) || {
+      bonus: 0,
+      returns: 0,
+      transfers: 0,
+      surplus: 0,
+      extras: 0,
+      salary: 1991,
+    }
+
+    return (
+      salesTotal +
+      (commissionEntry.bonus || 0) +
+      (commissionEntry.returns || 0) +
+      (commissionEntry.transfers || 0) +
+      (commissionEntry.surplus || 0) +
+      (commissionEntry.extras || 0) +
+      (commissionEntry.salary || 1991)
+    )
+  }
+
+  // Total Annual Commission (Sum of all monthly totals for the selected year)
+  const totalAnnualCommissions = useMemo(() => {
+    const year = getYear(selectedDate)
+    let total = 0
+    for (let month = 0; month < 12; month++) {
+      total += getMonthTotalEarnings(year, month)
+    }
+    return total
+  }, [selectedDate, sales, commissions])
+
+  // Total Monthly Earnings for current selection
+  const totalMonthlyEarnings = getMonthTotalEarnings(
+    getYear(selectedDate),
+    getMonth(selectedDate),
   )
 
-  // Total Monthly Earnings (Sales Commission + All Bonuses/Extras)
-  const totalMonthlyEarnings =
-    totalSalesCommission +
-    (commissionData.bonus || 0) +
-    (commissionData.returns || 0) +
-    (commissionData.transfers || 0) +
-    (commissionData.surplus || 0) +
-    (commissionData.extras || 0) +
-    (commissionData.salary || 1991)
-
-  const totalCommissionsYear = sales
-    .filter((s) => s.date.getFullYear() === selectedDate.getFullYear())
-    .reduce((acc, curr) => acc + curr.commission, 0)
-
+  // Chart Data
   const chartData = useMemo(() => {
     const data = []
     for (let i = 0; i < 12; i++) {
       const monthDate = new Date(selectedDate.getFullYear(), i, 1)
-      const monthSales = sales.filter(
-        (s) =>
-          s.date.getMonth() === i &&
-          s.date.getFullYear() === selectedDate.getFullYear(),
-      )
-      const total = monthSales.reduce((acc, curr) => acc + curr.commission, 0)
+      // Using total earnings for chart to be consistent
+      const total = getMonthTotalEarnings(selectedDate.getFullYear(), i)
       data.push({
         month: format(monthDate, 'MMM', { locale: ptBR }),
         comissao: total,
       })
     }
     return data
-  }, [sales, selectedDate])
+  }, [selectedDate, sales, commissions])
+
+  // History Data (Last 3 months)
+  const historyData = useMemo(() => {
+    return [1, 2, 3].map((monthsBack) => {
+      const date = subMonths(selectedDate, monthsBack)
+      const total = getMonthTotalEarnings(getYear(date), getMonth(date))
+      const vehicles = sales.filter(
+        (s) =>
+          getYear(s.date) === getYear(date) &&
+          getMonth(s.date) === getMonth(date) &&
+          s.type === 'Venda',
+      ).length
+
+      return {
+        date,
+        total,
+        vehicles,
+      }
+    })
+  }, [selectedDate, sales, commissions])
 
   const progress = Math.min(
     (totalMonthlyEarnings / (monthlyGoal || 5000)) * 100,
@@ -100,8 +150,9 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">
                 R${' '}
-                {totalCommissionsYear.toLocaleString('pt-BR', {
+                {totalAnnualCommissions.toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -122,6 +173,7 @@ export default function Dashboard() {
                 R${' '}
                 {totalMonthlyEarnings.toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -161,7 +213,7 @@ export default function Dashboard() {
               <ChartContainer
                 config={{
                   comissao: {
-                    label: 'Comissão',
+                    label: 'Comissão Total',
                     color: 'hsl(var(--chart-1))',
                   },
                 }}
@@ -200,7 +252,7 @@ export default function Dashboard() {
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `R$${value}`}
+                    tickFormatter={(value) => `R$${value / 1000}k`}
                   />
                   <ChartTooltip
                     content={<ChartTooltipContent indicator="dot" />}
@@ -217,45 +269,81 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="col-span-3 card-shadow border-none">
-            <CardHeader>
-              <CardTitle>Últimas Vendas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {monthlySales.slice(0, 5).map((sale) => (
-                  <div key={sale.id} className="flex items-center">
+          <div className="col-span-3 space-y-4">
+            <Card className="card-shadow border-none">
+              <CardHeader>
+                <CardTitle>Últimas Vendas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {monthlySales.slice(0, 5).map((sale) => (
+                    <div key={sale.id} className="flex items-center">
+                      <div
+                        className={cn(
+                          'flex h-9 w-9 items-center justify-center rounded-full border text-xs font-medium',
+                          sale.type === 'Venda'
+                            ? 'bg-green-100 text-green-700 border-green-200'
+                            : 'bg-blue-100 text-blue-700 border-blue-200',
+                        )}
+                      >
+                        {sale.type === 'Venda' ? 'V' : 'C'}
+                      </div>
+                      <div className="ml-4 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {sale.car}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {sale.client}
+                        </p>
+                      </div>
+                      <div className="ml-auto font-medium text-sm">
+                        +R$ {sale.commission}
+                      </div>
+                    </div>
+                  ))}
+                  {monthlySales.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nenhuma venda registrada.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-shadow border-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="h-4 w-4" />
+                  Histórico Recente
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {historyData.map((history) => (
                     <div
-                      className={cn(
-                        'flex h-9 w-9 items-center justify-center rounded-full border text-xs font-medium',
-                        sale.type === 'Venda'
-                          ? 'bg-green-100 text-green-700 border-green-200'
-                          : 'bg-blue-100 text-blue-700 border-blue-200',
-                      )}
+                      key={history.date.toString()}
+                      className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border/50"
                     >
-                      {sale.type === 'Venda' ? 'V' : 'C'}
+                      <div>
+                        <p className="font-medium capitalize text-sm">
+                          {format(history.date, 'MMMM yyyy', { locale: ptBR })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {history.vehicles} veículos
+                        </p>
+                      </div>
+                      <span className="font-bold text-sm">
+                        {history.total.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </span>
                     </div>
-                    <div className="ml-4 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {sale.car}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {sale.client}
-                      </p>
-                    </div>
-                    <div className="ml-auto font-medium text-sm">
-                      +R$ {sale.commission}
-                    </div>
-                  </div>
-                ))}
-                {monthlySales.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhuma venda registrada.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
