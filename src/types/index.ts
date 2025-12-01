@@ -32,3 +32,20 @@ export interface SalesSummary {
   totalGoal: number // Mocked goal
   percentageGoal: number
 }
+
+export interface ImportError {
+  row: number
+  message: string
+  data?: any
+}
+
+export interface ImportHistory {
+  id: string
+  createdAt: Date
+  sourceType: 'Arquivo CSV' | 'Texto Colado'
+  status: 'Sucesso' | 'Sucesso Parcial' | 'Falha'
+  totalRecords: number
+  importedRecords: number
+  failedRecords: number
+  errorDetails: ImportError[]
+}

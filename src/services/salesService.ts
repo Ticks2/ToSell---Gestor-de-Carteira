@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
-import { Sale, OperationType } from '@/types'
+import { Sale, OperationType, ImportHistory } from '@/types'
 
 interface SaleDB {
   id: string
@@ -14,6 +14,17 @@ interface SaleDB {
   tipo_operacao: string
   valor_comissao: number
   created_at: string
+}
+
+interface ImportHistoryDB {
+  id: string
+  created_at: string
+  source_type: string
+  status: string
+  total_records: number
+  imported_records: number
+  failed_records: number
+  error_details: any
 }
 
 const mapToAppType = (dbSale: SaleDB): Sale => ({
@@ -44,6 +55,17 @@ const mapToDBType = (
   retorno: sale.returnType || null,
   tipo_operacao: sale.type,
   valor_comissao: sale.commission,
+})
+
+const mapImportHistoryToApp = (dbHistory: ImportHistoryDB): ImportHistory => ({
+  id: dbHistory.id,
+  createdAt: new Date(dbHistory.created_at),
+  sourceType: dbHistory.source_type as 'Arquivo CSV' | 'Texto Colado',
+  status: dbHistory.status as 'Sucesso' | 'Sucesso Parcial' | 'Falha',
+  totalRecords: dbHistory.total_records,
+  importedRecords: dbHistory.imported_records,
+  failedRecords: dbHistory.failed_records,
+  errorDetails: dbHistory.error_details || [],
 })
 
 export const salesService = {
@@ -106,5 +128,33 @@ export const salesService = {
       p_vendas: salesData,
     })
     if (error) throw error
+  },
+
+  async logImport(
+    history: Omit<ImportHistory, 'id' | 'createdAt'>,
+  ): Promise<void> {
+    const { error } = await supabase.from('import_history').insert({
+      source_type: history.sourceType,
+      status: history.status,
+      total_records: history.totalRecords,
+      imported_records: history.importedRecords,
+      failed_records: history.failedRecords,
+      error_details: history.errorDetails,
+    })
+
+    if (error) {
+      console.error('Error logging import history:', error)
+      // We don't throw here to avoid blocking the user if just the log fails
+    }
+  },
+
+  async getImportHistory() {
+    const { data, error } = await supabase
+      .from('import_history')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return (data as ImportHistoryDB[]).map(mapImportHistoryToApp)
   },
 }

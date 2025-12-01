@@ -9,19 +9,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  Download,
-  Upload,
-  AlertCircle,
-  FileSpreadsheet,
-  FileText,
-} from 'lucide-react'
+import { Download, Upload, AlertCircle, FileSpreadsheet } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { salesService } from '@/services/salesService'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 import { parseSalesContent } from '@/lib/parsers'
+import { ImportError } from '@/types'
 
 interface CsvImportModalProps {
   open: boolean
@@ -33,9 +28,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
   const [textInput, setTextInput] = useState('')
   const [activeTab, setActiveTab] = useState('file')
   const [isLoading, setIsLoading] = useState(false)
-  const [validationErrors, setValidationErrors] = useState<
-    { row: number; message: string }[]
-  >([])
+  const [validationErrors, setValidationErrors] = useState<ImportError[]>([])
 
   const { refreshSales } = useAppStore()
   const { toast } = useToast()
@@ -62,46 +55,90 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
     setIsLoading(true)
     setValidationErrors([])
 
-    try {
-      const { sales, errors } = parseSalesContent(content)
+    const { sales, errors } = parseSalesContent(content)
+    const totalRecords = sales.length + errors.length
+    let importedRecords = 0
+    let failedRecords = errors.length
+    let status: 'Sucesso' | 'Sucesso Parcial' | 'Falha' = 'Falha'
+    let currentErrors = [...errors]
 
-      if (errors.length > 0) {
-        setValidationErrors(errors)
-        // If we have strict errors preventing import, stop.
-        // For now, we allow partial imports but let's block if no sales found
-        if (sales.length === 0) {
-          setIsLoading(false)
-          return
+    try {
+      if (sales.length > 0) {
+        await salesService.importSales(sales)
+        importedRecords = sales.length
+
+        if (failedRecords === 0) {
+          status = 'Sucesso'
+          toast({
+            title: 'Importação concluída!',
+            description: `${sales.length} registros foram importados com sucesso.`,
+          })
+        } else {
+          status = 'Sucesso Parcial'
+          toast({
+            title: 'Importação Parcial',
+            description: `${sales.length} importados. ${failedRecords} falharam.`,
+            variant: 'warning',
+          })
+        }
+      } else {
+        status = 'Falha'
+        if (failedRecords === 0) {
+          // No sales found and no explicit errors returned by parser (empty file?)
+          toast({
+            title: 'Nenhum registro',
+            description: 'Não foi possível identificar vendas no conteúdo.',
+            variant: 'destructive',
+          })
+        } else {
+          toast({
+            title: 'Falha na importação',
+            description: 'Verifique os erros listados e tente novamente.',
+            variant: 'destructive',
+          })
         }
       }
 
-      if (sales.length === 0) {
-        toast({
-          title: 'Nenhum registro encontrado',
-          description:
-            'Não foi possível identificar vendas no conteúdo fornecido.',
-          variant: 'destructive',
-        })
-        setIsLoading(false)
-        return
+      if (sales.length > 0) {
+        await refreshSales()
       }
 
-      await salesService.importSales(sales)
+      // Only close if full success
+      if (status === 'Sucesso') {
+        handleClose()
+      } else {
+        setValidationErrors(errors)
+      }
+    } catch (error: any) {
+      console.error(error)
+      status = 'Falha'
+      failedRecords = totalRecords // Assuming all failed if DB error
+      importedRecords = 0
+      currentErrors.push({
+        row: 0,
+        message: `Erro no servidor: ${error.message || 'Desconhecido'}`,
+      })
 
       toast({
-        title: 'Importação concluída!',
-        description: `${sales.length} registros foram importados com sucesso.`,
-      })
-      await refreshSales()
-      handleClose()
-    } catch (error) {
-      console.error(error)
-      toast({
-        title: 'Erro na importação',
-        description: 'Ocorreu um erro ao salvar os dados no servidor.',
+        title: 'Erro crítico',
+        description: 'Ocorreu um erro ao salvar os dados.',
         variant: 'destructive',
       })
     } finally {
+      // Log history
+      try {
+        await salesService.logImport({
+          sourceType: activeTab === 'file' ? 'Arquivo CSV' : 'Texto Colado',
+          status,
+          totalRecords,
+          importedRecords,
+          failedRecords: currentErrors.length,
+          errorDetails: currentErrors,
+        })
+      } catch (logErr) {
+        console.error('Failed to log import history', logErr)
+      }
+
       setIsLoading(false)
     }
   }
@@ -135,8 +172,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
         <DialogHeader>
           <DialogTitle>Importar Vendas</DialogTitle>
           <DialogDescription>
-            Importe seus dados via arquivo CSV ou cole o texto diretamente. O
-            sistema identifica automaticamente as colunas e seções.
+            Importe seus dados via arquivo CSV ou cole o texto diretamente.
           </DialogDescription>
         </DialogHeader>
 
@@ -192,7 +228,7 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
 
             <TabsContent value="text" className="mt-0 h-full">
               <Textarea
-                placeholder="Cole aqui os dados das vendas (ex: copie do Excel e cole aqui)..."
+                placeholder="Cole aqui os dados das vendas..."
                 className="h-[300px] font-mono text-xs resize-none"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
@@ -207,7 +243,9 @@ export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
             className="mt-2 max-h-[150px] overflow-y-auto shrink-0"
           >
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Atenção aos seguintes registros</AlertTitle>
+            <AlertTitle>
+              Registros com erro ({validationErrors.length})
+            </AlertTitle>
             <AlertDescription>
               <ul className="list-disc pl-4 text-xs mt-2 space-y-1">
                 {validationErrors.slice(0, 10).map((err, idx) => (

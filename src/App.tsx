@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import VendasMensais from './pages/VendasMensais'
 import Comissoes from './pages/Comissoes'
 import Relatorios from './pages/Relatorios'
+import HistoricoImportacoes from './pages/HistoricoImportacoes'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 import Layout from './components/Layout'
@@ -42,6 +43,10 @@ const App = () => (
             <Route path="/vendas" element={<VendasMensais />} />
             <Route path="/comissoes" element={<Comissoes />} />
             <Route path="/relatorios" element={<Relatorios />} />
+            <Route
+              path="/historico-importacoes"
+              element={<HistoricoImportacoes />}
+            />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

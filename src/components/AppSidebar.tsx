@@ -1,4 +1,4 @@
-import { Home, BarChart2, DollarSign, FileText, Menu } from 'lucide-react'
+import { Home, BarChart2, DollarSign, FileText, History } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Sidebar,
@@ -17,6 +17,11 @@ const navItems = [
   { icon: FileText, label: 'Vendas Mensais', path: '/vendas' },
   { icon: DollarSign, label: 'Comissões', path: '/comissoes' },
   { icon: BarChart2, label: 'Relatórios', path: '/relatorios' },
+  {
+    icon: History,
+    label: 'Histórico de Importações',
+    path: '/historico-importacoes',
+  },
 ]
 
 export function AppSidebar() {
