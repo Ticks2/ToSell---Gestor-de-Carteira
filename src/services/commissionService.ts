@@ -16,8 +16,6 @@ export const commissionService = {
     userId: string,
     commission: Partial<CommissionData> & { year: number; month: number },
   ) {
-    // Check if exists first to decide if we need to include user_id in a specific way
-    // or just use upsert with match on unique columns
     const { data, error } = await supabase
       .from('monthly_commissions')
       .upsert(

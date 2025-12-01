@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { getMonth, getYear } from 'date-fns'
-import { Save } from 'lucide-react'
+import { getMonth, getYear, subMonths, format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Save, TrendingUp } from 'lucide-react'
 import { CommissionData } from '@/types'
 
 export default function Comissoes() {
@@ -60,6 +61,29 @@ export default function Comissoes() {
   const handleSaveGoal = () => {
     updateMonthlyGoal(Number(goalInput))
   }
+
+  // Get last 3 months data for history
+  const historyData = useMemo(() => {
+    return [1, 2, 3].map((monthsBack) => {
+      const date = subMonths(selectedDate, monthsBack)
+      const { sales, commissionData: cd } = getMonthlyData(date)
+      const totalSales = sales.reduce((acc, s) => acc + s.commission, 0)
+      const total =
+        totalSales +
+        (cd.bonus || 0) +
+        (cd.returns || 0) +
+        (cd.transfers || 0) +
+        (cd.surplus || 0) +
+        (cd.extras || 0) +
+        (cd.salary || 1991)
+
+      return {
+        date,
+        total,
+        vehicles: sales.filter((s) => s.type === 'Venda').length,
+      }
+    })
+  }, [selectedDate, getMonthlyData])
 
   return (
     <div className="flex flex-col h-full">
@@ -113,8 +137,8 @@ export default function Comissoes() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="flex justify-between">
-                    Bônus
+                  <Label className="flex justify-between h-5 items-center">
+                    <span>Bônus</span>
                     {currentBonus > 0 && (
                       <span className="text-green-600 font-bold text-xs">
                         Ativo
@@ -139,7 +163,7 @@ export default function Comissoes() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Retorno</Label>
+                  <Label className="flex h-5 items-center">Retorno</Label>
                   <div className="relative">
                     <span className="absolute left-2 top-2.5 text-muted-foreground text-xs">
                       R$
@@ -290,15 +314,28 @@ export default function Comissoes() {
                     </div>
                   </li>
                   <li
-                    className={`flex items-center gap-3 p-2 rounded ${vehiclesSold >= 10 ? 'bg-green-100 dark:bg-green-900/30' : ''}`}
+                    className={`flex items-center gap-3 p-2 rounded ${vehiclesSold >= 10 && vehiclesSold < 12 ? 'bg-green-100 dark:bg-green-900/30' : ''}`}
                   >
                     <div
                       className={`h-3 w-3 rounded-full ${vehiclesSold >= 10 ? 'bg-green-500' : 'bg-gray-300'}`}
                     />
                     <div className="flex-1">
-                      <span className="font-medium">10+ Veículos Vendidos</span>
+                      <span className="font-medium">10 Veículos Vendidos</span>
                       <p className="text-xs text-muted-foreground">
                         Bônus: +R$ 3.000,00
+                      </p>
+                    </div>
+                  </li>
+                  <li
+                    className={`flex items-center gap-3 p-2 rounded ${vehiclesSold >= 12 ? 'bg-green-100 dark:bg-green-900/30' : ''}`}
+                  >
+                    <div
+                      className={`h-3 w-3 rounded-full ${vehiclesSold >= 12 ? 'bg-green-500' : 'bg-gray-300'}`}
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">12 Veículos Vendidos</span>
+                      <p className="text-xs text-muted-foreground">
+                        Bônus: +R$ 3.500,00
                       </p>
                     </div>
                   </li>
@@ -310,6 +347,36 @@ export default function Comissoes() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Histórico de resultados Recente
+              </h3>
+              <div className="space-y-3">
+                {historyData.map((history) => (
+                  <div
+                    key={history.date.toString()}
+                    className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm"
+                  >
+                    <div>
+                      <p className="font-medium capitalize">
+                        {format(history.date, 'MMMM yyyy', { locale: ptBR })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {history.vehicles} veículos
+                      </p>
+                    </div>
+                    <span className="font-bold text-lg">
+                      {history.total.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

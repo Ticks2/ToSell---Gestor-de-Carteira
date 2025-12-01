@@ -55,7 +55,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsLoading(true)
     try {
       const [salesData, profileData, commissionsData] = await Promise.all([
-        salesService.getSales(),
+        salesService.getSales(user.id),
         profileService.getProfile(user.id),
         commissionService.getCommissions(user.id),
       ])
@@ -160,8 +160,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           description: 'Suas alterações podem não ter sido salvas.',
           variant: 'destructive',
         })
-        // Revert optimistic update would be complex here without keeping previous state
-        // For now, we just notify user
       }
     },
     [user, toast],

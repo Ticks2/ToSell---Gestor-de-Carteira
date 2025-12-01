@@ -2,10 +2,20 @@ import { supabase } from '@/lib/supabase/client'
 import { Client } from '@/types'
 
 export const clientService = {
-  async getClients() {
+  async getClients(userId?: string) {
+    let uid = userId
+    if (!uid) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return []
+      uid = user.id
+    }
+
     const { data, error } = await supabase
       .from('clients')
       .select('*')
+      .eq('user_id', uid)
       .order('full_name', { ascending: true })
 
     if (error) throw error
@@ -53,10 +63,20 @@ export const clientService = {
     return data as Client
   },
 
-  async searchClients(query: string) {
+  async searchClients(query: string, userId?: string) {
+    let uid = userId
+    if (!uid) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return []
+      uid = user.id
+    }
+
     const { data, error } = await supabase
       .from('clients')
       .select('*')
+      .eq('user_id', uid)
       .ilike('full_name', `%${query}%`)
       .limit(10)
 

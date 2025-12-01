@@ -110,6 +110,56 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_commissions: {
+        Row: {
+          bonus: number | null
+          created_at: string
+          extras: number | null
+          id: string
+          month: number
+          returns: number | null
+          salary: number | null
+          surplus: number | null
+          transfers: number | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          bonus?: number | null
+          created_at?: string
+          extras?: number | null
+          id?: string
+          month: number
+          returns?: number | null
+          salary?: number | null
+          surplus?: number | null
+          transfers?: number | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          bonus?: number | null
+          created_at?: string
+          extras?: number | null
+          id?: string
+          month?: number
+          returns?: number | null
+          salary?: number | null
+          surplus?: number | null
+          transfers?: number | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'monthly_commissions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['user_id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
