@@ -7,51 +7,18 @@ import React, {
   useCallback,
 } from 'react'
 import { Sale, CommissionData } from '@/types'
-import { addMonths, isSameMonth, getMonth, getYear } from 'date-fns'
-
-// MOCK DATA GENERATION
-const generateMockSales = (): Sale[] => {
-  const sales: Sale[] = []
-  const now = new Date()
-  const startOfYear = new Date(now.getFullYear(), 0, 1)
-
-  for (let i = 0; i < 50; i++) {
-    const date = addMonths(startOfYear, Math.floor(Math.random() * 11))
-    date.setDate(Math.floor(Math.random() * 28) + 1)
-
-    sales.push({
-      id: Math.random().toString(36).substr(2, 9),
-      date: date,
-      car: [
-        'Honda Civic',
-        'Toyota Corolla',
-        'Fiat Uno',
-        'Jeep Compass',
-        'VW Gol',
-      ][Math.floor(Math.random() * 5)],
-      year: 2020 + Math.floor(Math.random() * 5),
-      plate: `ABC-${1000 + i}`,
-      client: `Cliente ${i + 1}`,
-      type: Math.random() > 0.2 ? 'Venda' : 'Compra',
-      commission:
-        Math.random() > 0.2
-          ? [400, 500, 600, 800][Math.floor(Math.random() * 4)]
-          : 600,
-      createdAt: new Date(),
-      gestauto: Math.random() > 0.5,
-      returnType: 'R1',
-    })
-  }
-  return sales
-}
+import { isSameMonth, getMonth, getYear } from 'date-fns'
+import { salesService } from '@/services/salesService'
+import { useToast } from '@/hooks/use-toast'
 
 interface AppState {
   sales: Sale[]
   commissions: CommissionData[]
   selectedDate: Date
-  addSale: (sale: Omit<Sale, 'id' | 'createdAt'>) => void
-  updateSale: (id: string, sale: Partial<Sale>) => void
-  deleteSale: (id: string) => void
+  isLoading: boolean
+  addSale: (sale: Omit<Sale, 'id' | 'createdAt'>) => Promise<void>
+  updateSale: (id: string, sale: Partial<Sale>) => Promise<void>
+  deleteSale: (id: string) => Promise<void>
   updateCommission: (
     year: number,
     month: number,
@@ -62,6 +29,7 @@ interface AppState {
     sales: Sale[]
     commissionData: CommissionData
   }
+  refreshSales: () => Promise<void>
 }
 
 const AppContext = createContext<AppState | null>(null)
@@ -72,29 +40,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [sales, setSales] = useState<Sale[]>([])
   const [commissions, setCommissions] = useState<CommissionData[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
 
-  // Initialize with mock data
-  useEffect(() => {
-    setSales(generateMockSales())
-  }, [])
-
-  const addSale = useCallback((saleData: Omit<Sale, 'id' | 'createdAt'>) => {
-    const newSale: Sale = {
-      ...saleData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
+  const refreshSales = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const data = await salesService.getSales()
+      setSales(data)
+    } catch (error) {
+      console.error('Error fetching sales:', error)
+      toast({
+        title: 'Erro ao carregar vendas',
+        description: 'Não foi possível conectar ao servidor.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
     }
-    setSales((prev) => [...prev, newSale])
-  }, [])
+  }, [toast])
 
-  const updateSale = useCallback((id: string, updatedData: Partial<Sale>) => {
-    setSales((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updatedData } : s)),
-    )
-  }, [])
+  useEffect(() => {
+    refreshSales()
+  }, [refreshSales])
 
-  const deleteSale = useCallback((id: string) => {
-    setSales((prev) => prev.filter((s) => s.id !== id))
+  const addSale = useCallback(
+    async (saleData: Omit<Sale, 'id' | 'createdAt'>) => {
+      try {
+        const newSale = await salesService.createSale(saleData)
+        setSales((prev) => [newSale, ...prev])
+      } catch (error) {
+        console.error('Error adding sale:', error)
+        throw error
+      }
+    },
+    [],
+  )
+
+  const updateSale = useCallback(
+    async (id: string, updatedData: Partial<Sale>) => {
+      try {
+        const updatedSale = await salesService.updateSale(id, updatedData)
+        setSales((prev) => prev.map((s) => (s.id === id ? updatedSale : s)))
+      } catch (error) {
+        console.error('Error updating sale:', error)
+        throw error
+      }
+    },
+    [],
+  )
+
+  const deleteSale = useCallback(async (id: string) => {
+    try {
+      await salesService.deleteSale(id)
+      setSales((prev) => prev.filter((s) => s.id !== id))
+    } catch (error) {
+      console.error('Error deleting sale:', error)
+      throw error
+    }
   }, [])
 
   const updateCommission = useCallback(
@@ -157,22 +160,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       sales,
       commissions,
       selectedDate,
+      isLoading,
       addSale,
       updateSale,
       deleteSale,
       updateCommission,
       setSelectedDate,
       getMonthlyData,
+      refreshSales,
     }),
     [
       sales,
       commissions,
       selectedDate,
+      isLoading,
       addSale,
       updateSale,
       deleteSale,
       updateCommission,
       getMonthlyData,
+      refreshSales,
     ],
   )
 

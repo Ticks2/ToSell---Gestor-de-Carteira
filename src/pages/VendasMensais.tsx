@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { Edit2, Trash2, Plus, Download, Search } from 'lucide-react'
+import { Edit2, Trash2, Plus, Download, Search, Upload } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { Sale, OperationType } from '@/types'
 import { Header } from '@/components/Header'
 import { MonthYearPicker } from '@/components/MonthYearPicker'
 import { SaleFormModal } from '@/components/sales/SaleFormModal'
+import { CsvImportModal } from '@/components/sales/CsvImportModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -29,6 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function VendasMensais() {
   const {
@@ -38,6 +40,7 @@ export default function VendasMensais() {
     addSale,
     updateSale,
     deleteSale,
+    isLoading,
   } = useAppStore()
   const { sales: monthlySales } = useMemo(
     () => getMonthlyData(selectedDate),
@@ -48,6 +51,7 @@ export default function VendasMensais() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'Todas' | OperationType>('Todas')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [editingSale, setEditingSale] = useState<Sale | undefined>(undefined)
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
 
@@ -62,32 +66,53 @@ export default function VendasMensais() {
     })
   }, [monthlySales, searchTerm, filterType])
 
-  const handleAddSale = (data: any) => {
-    addSale({ ...data, date: new Date(data.date) })
-    setIsModalOpen(false)
-    toast({
-      title: 'Venda registrada com sucesso!',
-      description: `${data.car} - ${data.client}`,
-    })
-  }
-
-  const handleUpdateSale = (data: any) => {
-    if (editingSale) {
-      updateSale(editingSale.id, { ...data, date: new Date(data.date) })
-      setEditingSale(undefined)
+  const handleAddSale = async (data: any) => {
+    try {
+      await addSale({ ...data, date: new Date(data.date) })
       setIsModalOpen(false)
       toast({
-        title: 'Venda atualizada!',
-        description: 'As alterações foram salvas.',
+        title: 'Venda registrada com sucesso!',
+        description: `${data.car} - ${data.client}`,
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro ao registrar venda',
+        variant: 'destructive',
       })
     }
   }
 
-  const handleDeleteSale = () => {
+  const handleUpdateSale = async (data: any) => {
+    if (editingSale) {
+      try {
+        await updateSale(editingSale.id, { ...data, date: new Date(data.date) })
+        setEditingSale(undefined)
+        setIsModalOpen(false)
+        toast({
+          title: 'Venda atualizada!',
+          description: 'As alterações foram salvas.',
+        })
+      } catch (error) {
+        toast({
+          title: 'Erro ao atualizar venda',
+          variant: 'destructive',
+        })
+      }
+    }
+  }
+
+  const handleDeleteSale = async () => {
     if (saleToDelete) {
-      deleteSale(saleToDelete)
-      setSaleToDelete(null)
-      toast({ title: 'Venda removida.', variant: 'destructive' })
+      try {
+        await deleteSale(saleToDelete)
+        setSaleToDelete(null)
+        toast({ title: 'Venda removida.', variant: 'destructive' })
+      } catch (error) {
+        toast({
+          title: 'Erro ao remover venda',
+          variant: 'destructive',
+        })
+      }
     }
   }
 
@@ -112,7 +137,13 @@ export default function VendasMensais() {
               {filteredSales.length} registros encontrados
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={() => setIsImportModalOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" /> Importar CSV
+            </Button>
             <Button variant="outline" onClick={() => console.log('Export')}>
               <Download className="mr-2 h-4 w-4" /> Exportar
             </Button>
@@ -166,50 +197,82 @@ export default function VendasMensais() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSales.map((sale) => (
-                <TableRow key={sale.id} className="group">
-                  <TableCell>{format(sale.date, 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${sale.type === 'Venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
-                    >
-                      {sale.type}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-medium">{sale.car}</TableCell>
-                  <TableCell>{sale.year}</TableCell>
-                  <TableCell className="uppercase font-mono text-xs">
-                    {sale.plate || '-'}
-                  </TableCell>
-                  <TableCell>{sale.client}</TableCell>
-                  <TableCell>{sale.gestauto ? 'Sim' : 'Não'}</TableCell>
-                  <TableCell className="text-right font-bold text-primary">
-                    {sale.commission.toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditModal(sale)}
-                      >
-                        <Edit2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSaleToDelete(sale.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredSales.length === 0 && (
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-12" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-10" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24 ml-auto" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-8 ml-auto" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                : filteredSales.map((sale) => (
+                    <TableRow key={sale.id} className="group">
+                      <TableCell>{format(sale.date, 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${sale.type === 'Venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
+                        >
+                          {sale.type}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium">{sale.car}</TableCell>
+                      <TableCell>{sale.year}</TableCell>
+                      <TableCell className="uppercase font-mono text-xs">
+                        {sale.plate || '-'}
+                      </TableCell>
+                      <TableCell>{sale.client}</TableCell>
+                      <TableCell>{sale.gestauto ? 'Sim' : 'Não'}</TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        {sale.commission.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditModal(sale)}
+                          >
+                            <Edit2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSaleToDelete(sale.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              {!isLoading && filteredSales.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={9}
@@ -241,6 +304,11 @@ export default function VendasMensais() {
         onOpenChange={setIsModalOpen}
         onSubmit={editingSale ? handleUpdateSale : handleAddSale}
         initialData={editingSale}
+      />
+
+      <CsvImportModal
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
       />
 
       <AlertDialog
