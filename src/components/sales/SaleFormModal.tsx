@@ -11,49 +11,68 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from '@/components/ui/form'
+import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { salesService } from '@/services/salesService'
 import { crmService } from '@/services/crmService'
+import { clientService } from '@/services/clientService'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Calendar as CalendarIcon } from 'lucide-react'
 import { Client, Sale } from '@/types'
 import { supabase } from '@/lib/supabase/client'
 import { parseISO, format } from 'date-fns'
+import { ClientFormSection } from './forms/ClientFormSection'
+import { VehicleFormSection } from './forms/VehicleFormSection'
+import { FinancialFormSection } from './forms/FinancialFormSection'
 
-const saleSchema = z.object({
-  type: z.enum(['Venda', 'Compra']).default('Venda'),
-  date: z.string().refine((val) => !isNaN(Date.parse(val)), 'Data inválida'),
-  status: z.enum(['pending', 'paid']).default('pending'),
-  clientId: z.string().min(1, 'Cliente é obrigatório'),
-  car: z.string().min(1, 'Veículo é obrigatório'),
-  year: z.coerce
-    .number()
-    .min(1900, 'Ano inválido')
-    .max(new Date().getFullYear() + 2, 'Ano inválido'),
-  plate: z.string().optional(),
-  saleValue: z.coerce.number().min(0, 'Valor inválido'),
-  financedValue: z.coerce.number().optional(),
-  commission: z.coerce.number().min(0, 'Comissão não pode ser negativa'),
-  returnType: z.string().optional(),
-  gestauto: z.boolean().default(false),
-})
+const saleSchema = z
+  .object({
+    type: z.enum(['Venda', 'Compra']).default('Venda'),
+    date: z.string().min(1, 'Data é obrigatória'),
+
+    // Client Fields
+    clientId: z.string().optional(),
+    newClientName: z.string().optional(),
+    newClientBirth: z.string().optional(),
+    newClientCity: z.string().optional(),
+    newClientPhone: z.string().optional(),
+    newClientEmail: z
+      .string()
+      .email('Email inválido')
+      .optional()
+      .or(z.literal('')),
+
+    // Vehicle Fields
+    car: z.string().min(1, 'Modelo do veículo é obrigatório'),
+    year: z.coerce
+      .number()
+      .min(1900, 'Ano inválido')
+      .max(new Date().getFullYear() + 2, 'Ano inválido'),
+    plate: z.string().optional(),
+
+    // Financial Fields
+    saleValue: z.coerce.number().optional(),
+    financedValue: z.coerce.number().optional(),
+    commission: z.coerce.number().min(0, 'Comissão não pode ser negativa'),
+    returnType: z.string().optional(),
+    gestauto: z.boolean().default(false),
+  })
+  .superRefine((data, ctx) => {
+    // If no clientId is selected, ensure we have a new client name
+    if (!data.clientId && !data.newClientName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Selecione um cliente ou crie um novo',
+        path: ['clientId'],
+      })
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Nome é obrigatório para novo cliente',
+        path: ['newClientName'],
+      })
+    }
+  })
 
 type SaleFormValues = z.infer<typeof saleSchema>
 
@@ -61,9 +80,8 @@ interface SaleFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   saleId?: string | null
-  initialData?: Sale | undefined
+  saleToEdit?: Sale | undefined // Consistent naming
   onSuccess?: () => void
-  onSubmit?: (data: any) => Promise<void>
   fixedClientId?: string
 }
 
@@ -71,22 +89,30 @@ export function SaleFormModal({
   open,
   onOpenChange,
   saleId,
-  initialData,
+  saleToEdit,
   onSuccess,
-  onSubmit,
   fixedClientId,
 }: SaleFormModalProps) {
   const { toast } = useToast()
   const [clients, setClients] = useState<Client[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isNewClient, setIsNewClient] = useState(false)
+
+  // Determine if we are editing
+  const initialData = saleToEdit
+  const isEditing = !!initialData || !!saleId
 
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
       type: 'Venda',
       date: new Date().toISOString().split('T')[0],
-      status: 'pending',
       clientId: fixedClientId || '',
+      newClientName: '',
+      newClientBirth: '',
+      newClientCity: '',
+      newClientPhone: '',
+      newClientEmail: '',
       car: '',
       year: new Date().getFullYear(),
       plate: '',
@@ -98,7 +124,6 @@ export function SaleFormModal({
     },
   })
 
-  // Load clients and sale data
   useEffect(() => {
     const loadClients = async () => {
       try {
@@ -114,54 +139,42 @@ export function SaleFormModal({
       }
     }
 
-    const loadSale = async (id: string) => {
-      setIsLoading(true)
-      try {
-        const sale = await salesService.getSale(id)
-        if (sale) {
-          populateForm(sale)
-        }
-      } catch (error) {
-        toast({
-          title: 'Erro ao carregar venda',
-          variant: 'destructive',
-        })
-        onOpenChange(false)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    const populateForm = (sale: Sale) => {
-      form.reset({
-        type: sale.type || 'Venda',
-        date: format(sale.date, 'yyyy-MM-dd'),
-        status: sale.status || 'pending',
-        clientId: sale.clientId || '',
-        car: sale.car,
-        year: sale.year || new Date().getFullYear(),
-        plate: sale.plate || '',
-        saleValue: sale.saleValue || 0,
-        financedValue: sale.financedValue || 0,
-        commission: sale.commission,
-        returnType: sale.returnType || '',
-        gestauto: sale.gestauto || false,
-      })
-    }
-
     if (open) {
       loadClients()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (open) {
       if (initialData) {
-        populateForm(initialData)
-      } else if (saleId) {
-        loadSale(saleId)
+        // Populate form for editing
+        form.reset({
+          type: initialData.type || 'Venda',
+          date: format(initialData.date, 'yyyy-MM-dd'),
+          clientId: initialData.clientId || '',
+          car: initialData.car,
+          year: initialData.year || new Date().getFullYear(),
+          plate: initialData.plate || '',
+          saleValue: initialData.saleValue || 0,
+          financedValue: initialData.financedValue || 0,
+          commission: initialData.commission,
+          returnType: initialData.returnType || '',
+          // Handle Gestauto mapping: "Sim" -> true, "Não" -> false, null -> false
+          gestauto:
+            initialData.gestauto === 'Sim' || initialData.gestauto === 'Ativo',
+        })
+        setIsNewClient(false)
       } else {
-        // Reset to defaults for new sale
+        // Reset for new entry
         form.reset({
           type: 'Venda',
           date: new Date().toISOString().split('T')[0],
-          status: 'pending',
           clientId: fixedClientId || '',
+          newClientName: '',
+          newClientBirth: '',
+          newClientCity: '',
+          newClientPhone: '',
+          newClientEmail: '',
           car: '',
           year: new Date().getFullYear(),
           plate: '',
@@ -171,9 +184,10 @@ export function SaleFormModal({
           returnType: '',
           gestauto: false,
         })
+        setIsNewClient(false)
       }
     }
-  }, [open, saleId, initialData, fixedClientId, form, toast, onOpenChange])
+  }, [open, initialData, fixedClientId, form])
 
   const handleFormSubmit = async (values: SaleFormValues) => {
     setIsLoading(true)
@@ -183,34 +197,58 @@ export function SaleFormModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const finalClientId = fixedClientId || values.clientId
-      const selectedClient = clients.find((c) => c.id === finalClientId)
-      const clientName = selectedClient ? selectedClient.full_name : 'Cliente'
+      let finalClientId = values.clientId
+      let clientName = ''
 
-      // Prepare data in Sale object structure (minus id/created_at)
-      const saleData = {
-        ...values,
-        date: parseISO(values.date),
-        clientId: finalClientId,
-        client: clientName,
-        userId: user.id,
-        // Ensure number fields are valid numbers or null if optional logic dictates (zod handles defaults)
-        financedValue: values.financedValue || 0,
-        saleValue: values.saleValue || 0,
+      // 1. Handle Client Creation if needed
+      if (isNewClient || !finalClientId) {
+        if (values.newClientName) {
+          const newClient = await clientService.createClient({
+            full_name: values.newClientName,
+            birth_date: values.newClientBirth || undefined,
+            city: values.newClientCity || undefined,
+            phone: values.newClientPhone || undefined,
+            email: values.newClientEmail || undefined,
+            status: 'client',
+          })
+          finalClientId = newClient.id
+          clientName = newClient.full_name
+        }
+      } else {
+        const selected = clients.find((c) => c.id === finalClientId)
+        clientName = selected ? selected.full_name : 'Cliente'
       }
 
-      if (onSubmit) {
-        // External handler (e.g. VendasMensais)
-        await onSubmit(saleData)
+      if (!finalClientId) throw new Error('Cliente obrigatório')
+
+      // 2. Prepare Sale Data
+      const saleData = {
+        type: values.type,
+        date: parseISO(values.date),
+        clientId: finalClientId,
+        client: clientName, // Snapshot name
+        car: values.car,
+        year: values.year,
+        plate: values.plate,
+        saleValue: values.saleValue,
+        financedValue: values.financedValue,
+        commission: values.commission,
+        returnType: values.returnType,
+        gestauto: values.gestauto ? 'Sim' : 'Não', // Map boolean back to string
+        status: 'pending' as const,
+        userId: user.id,
+      }
+
+      // 3. Save Sale
+      if (initialData && initialData.id) {
+        await salesService.updateSale(initialData.id, saleData)
+        toast({ title: 'Operação atualizada com sucesso' })
+      } else if (saleId) {
+        await salesService.updateSale(saleId, saleData)
+        toast({ title: 'Operação atualizada com sucesso' })
       } else {
-        // Internal handler (e.g. ClientDetails)
-        if (saleId) {
-          await salesService.updateSale(saleId, saleData)
-          toast({ title: 'Venda atualizada com sucesso' })
-        } else {
-          await salesService.createSale(saleData)
-          toast({ title: 'Venda criada com sucesso' })
-        }
+        await salesService.createSale(saleData)
+        toast({ title: 'Nova operação registrada com sucesso' })
       }
 
       if (onSuccess) onSuccess()
@@ -218,7 +256,8 @@ export function SaleFormModal({
     } catch (error) {
       console.error(error)
       toast({
-        title: 'Erro ao salvar venda',
+        title: 'Erro ao salvar operação',
+        description: 'Verifique os dados e tente novamente.',
         variant: 'destructive',
       })
     } finally {
@@ -228,251 +267,88 @@ export function SaleFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {saleId || initialData ? 'Editar Operação' : 'Nova Operação'}
-          </DialogTitle>
-          <DialogDescription>
-            Preencha os detalhes da venda ou compra abaixo.
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="max-w-[95vw] w-[1000px] max-h-[90vh] overflow-y-auto p-0 gap-0">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleFormSubmit)}
-            className="space-y-4"
+            className="flex flex-col h-full"
           >
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
+            {/* Header Section */}
+            <div className="px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-background sticky top-0 z-10">
+              <div>
+                <DialogTitle className="text-xl">
+                  {isEditing ? 'Editar Operação' : 'Nova Operação'}
+                </DialogTitle>
+                <DialogDescription>
+                  Preencha os dados da venda ou compra.
+                </DialogDescription>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {/* Date Picker */}
+                <div className="relative">
+                  <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="date"
+                    className="w-[160px] pl-9"
+                    {...form.register('date')}
+                  />
+                </div>
+
+                {/* Operation Type Tabs */}
+                <Tabs
+                  value={form.watch('type')}
+                  onValueChange={(v) =>
+                    form.setValue('type', v as 'Venda' | 'Compra')
+                  }
+                  className="w-[180px]"
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger
+                      value="Venda"
+                      className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700"
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Venda">Venda</SelectItem>
-                        <SelectItem value="Compra">Compra</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
+                      Venda
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="Compra"
+                      className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700"
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="paid">Pago</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      Compra
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
 
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    value={field.value}
-                    disabled={!!fixedClientId}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Main Content - 2 Column Grid */}
+            <div className="flex-1 p-6 bg-muted/10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                {/* Left Column: Client */}
+                <div className="bg-card rounded-lg border p-4 shadow-sm h-full">
+                  <ClientFormSection
+                    form={form}
+                    clients={clients}
+                    isNewClient={isNewClient}
+                    setIsNewClient={setIsNewClient}
+                  />
+                </div>
 
-            <div className="grid grid-cols-4 gap-4">
-              <FormField
-                control={form.control}
-                name="car"
-                render={({ field }) => (
-                  <FormItem className="col-span-2">
-                    <FormLabel>Veículo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Honda Civic" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                {/* Right Column: Vehicle & Financial */}
+                <div className="space-y-6">
+                  <div className="bg-card rounded-lg border p-4 shadow-sm">
+                    <VehicleFormSection form={form} />
+                  </div>
 
-              <FormField
-                control={form.control}
-                name="year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ano</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="YYYY" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="plate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Placa</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="ABC-1234"
-                        className="uppercase"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <div className="bg-card rounded-lg border p-4 shadow-sm">
+                    <FinancialFormSection form={form} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="saleValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor Venda</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="financedValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Financiado</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="commission"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Comissão</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        className="font-bold text-green-600"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 items-end">
-              <FormField
-                control={form.control}
-                name="returnType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Retorno / Banco</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: BV Financeira" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="gestauto"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 h-10 items-center">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Garantia Gestauto</FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <DialogFooter className="pt-4">
+            {/* Footer */}
+            <DialogFooter className="p-6 border-t bg-background sticky bottom-0 z-10">
               <Button
                 type="button"
                 variant="outline"
@@ -480,9 +356,13 @@ export function SaleFormModal({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="min-w-[150px]"
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Operação
+                {isEditing ? 'Atualizar Operação' : 'Salvar Operação'}
               </Button>
             </DialogFooter>
           </form>
