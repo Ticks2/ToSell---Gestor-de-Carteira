@@ -25,6 +25,7 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Check,
 } from 'lucide-react'
 
@@ -43,12 +44,19 @@ export function MonthYearPicker({
 }: MonthYearPickerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [menuDate, setMenuDate] = React.useState(date)
+  const [internalMode, setInternalMode] = React.useState<'month' | 'year'>(
+    'month',
+  )
 
   React.useEffect(() => {
     if (isOpen) {
       setMenuDate(date)
+      // Initialize internal mode based on viewMode
+      // If yearly view, we start and stay in year mode
+      // If monthly view, we start in month mode but can toggle to year
+      setInternalMode(viewMode === 'yearly' ? 'year' : 'month')
     }
-  }, [isOpen, date])
+  }, [isOpen, date, viewMode])
 
   const handlePrevious = () => {
     const newDate =
@@ -94,9 +102,14 @@ export function MonthYearPicker({
       setDate(startOfYear(newDate))
       setIsOpen(false)
     } else {
+      // In monthly mode, selecting a year updates the menu date and goes back to month selection
       setMenuDate(setYear(menuDate, year))
-      // In monthly mode, we stay open to let user pick month, or just update menuDate
+      setInternalMode('month')
     }
+  }
+
+  const toggleInternalMode = () => {
+    setInternalMode((prev) => (prev === 'month' ? 'year' : 'month'))
   }
 
   const months = [
@@ -115,7 +128,11 @@ export function MonthYearPicker({
   ]
 
   const currentYear = getYear(menuDate)
+  // Generate a range of 12 years centered somewhat around the current menu date year
   const years = Array.from({ length: 12 }, (_, i) => currentYear - 6 + i)
+
+  // Determine if we should show the year picker grid
+  const showYearPicker = viewMode === 'yearly' || internalMode === 'year'
 
   return (
     <div className="flex items-center gap-2 bg-card p-1 rounded-lg border shadow-sm flex-wrap sm:flex-nowrap">
@@ -167,7 +184,8 @@ export function MonthYearPicker({
           </PopoverTrigger>
           <PopoverContent className="w-64 p-0" align="start">
             <div className="p-3">
-              {viewMode === 'monthly' ? (
+              {!showYearPicker ? (
+                /* Month Selection View */
                 <>
                   <div className="flex items-center justify-between mb-4">
                     <Button
@@ -178,7 +196,16 @@ export function MonthYearPicker({
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span className="font-semibold text-sm">{currentYear}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="font-semibold text-sm h-7 px-2"
+                      onClick={toggleInternalMode}
+                      title="Selecionar ano"
+                    >
+                      {currentYear}
+                      <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -207,6 +234,7 @@ export function MonthYearPicker({
                   </div>
                 </>
               ) : (
+                /* Year Selection View */
                 <>
                   <div className="flex items-center justify-between mb-4">
                     <Button
