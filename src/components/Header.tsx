@@ -20,7 +20,7 @@ interface HeaderProps {
 }
 
 export function Header({ title }: HeaderProps) {
-  const { signOut, user } = useAuth()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
