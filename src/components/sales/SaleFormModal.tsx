@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -101,8 +102,8 @@ interface SaleFormModalProps {
 export function SaleFormModal({
   open,
   onOpenChange,
-  onSubmit,
-  initialData,
+  sale,
+  onSuccess,
 }: SaleFormModalProps) {
   const [clients, setClients] = useState<Client[]>([])
   const [openClientSearch, setOpenClientSearch] = useState(false)
@@ -172,6 +173,11 @@ export function SaleFormModal({
           returnType: undefined,
         })
       }
+      onSuccess()
+      onOpenChange(false)
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao salvar venda')
     }
   }, [open, initialData, form])
 
@@ -251,9 +257,7 @@ export function SaleFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {initialData ? 'Editar Operação' : 'Nova Operação'}
-          </DialogTitle>
+          <DialogTitle>{sale ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -292,7 +296,7 @@ export function SaleFormModal({
               />
               <FormField
                 control={form.control}
-                name="date"
+                name="data_venda"
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-2 space-y-0">
                     <FormLabel className="whitespace-nowrap">
@@ -657,13 +661,6 @@ export function SaleFormModal({
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
               <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>

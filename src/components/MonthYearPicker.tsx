@@ -1,11 +1,12 @@
-import * as React from 'react'
-import { format, subMonths, addMonths } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import {
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import useAppStore from '@/stores/useAppStore'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -15,14 +16,58 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
 
-interface MonthYearPickerProps {
-  date: Date
-  onChange: (date: Date) => void
-}
+const MONTHS = [
+  { value: 1, label: 'Janeiro' },
+  { value: 2, label: 'Fevereiro' },
+  { value: 3, label: 'Março' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Maio' },
+  { value: 6, label: 'Junho' },
+  { value: 7, label: 'Julho' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Setembro' },
+  { value: 10, label: 'Outubro' },
+  { value: 11, label: 'Novembro' },
+  { value: 12, label: 'Dezembro' },
+]
 
-export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
-  const handlePrevious = () => onChange(subMonths(date, 1))
-  const handleNext = () => onChange(addMonths(date, 1))
+export function MonthYearPicker() {
+  const {
+    selectedMonth,
+    selectedYear,
+    viewMode,
+    setMonth,
+    setYear,
+    setViewMode,
+  } = useAppStore()
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i)
+
+  const handlePrevious = () => {
+    if (viewMode === 'monthly') {
+      if (selectedMonth === 1) {
+        setMonth(12)
+        setYear(selectedYear - 1)
+      } else {
+        setMonth(selectedMonth - 1)
+      }
+    } else {
+      setYear(selectedYear - 1)
+    }
+  }
+
+  const handleNext = () => {
+    if (viewMode === 'monthly') {
+      if (selectedMonth === 12) {
+        setMonth(1)
+        setYear(selectedYear + 1)
+      } else {
+        setMonth(selectedMonth + 1)
+      }
+    } else {
+      setYear(selectedYear + 1)
+    }
+  }
 
   return (
     <div className="flex items-center gap-2 bg-card p-1 rounded-lg border shadow-sm flex-wrap sm:flex-nowrap">
@@ -32,8 +77,11 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
         onClick={handlePrevious}
         className="h-8 w-8 hover:bg-muted shrink-0"
       >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
+        <TabsList>
+          <TabsTrigger value="monthly">Mensal</TabsTrigger>
+          <TabsTrigger value="yearly">Anual</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <Popover>
         <PopoverTrigger asChild>

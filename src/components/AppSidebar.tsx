@@ -12,14 +12,16 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
-  SidebarRail,
-  useSidebar,
+  SidebarMenuItem,
+  SidebarFooter,
 } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
+import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -29,9 +31,29 @@ const navItems = [
   { icon: Users, label: 'CRM', path: '/crm/clients' },
   { icon: Bell, label: 'Alertas CRM', path: '/crm/alerts' },
   {
+    title: 'Dashboard',
+    url: '/',
+    icon: Home,
+  },
+  {
+    title: 'Vendas Mensais',
+    url: '/vendas',
+    icon: FileText,
+  },
+  {
+    title: 'Comissões',
+    url: '/comissoes',
+    icon: Users,
+  },
+  {
+    title: 'Relatórios',
+    url: '/relatorios',
+    icon: BarChart3,
+  },
+  {
+    title: 'Histórico Importação',
+    url: '/historico',
     icon: History,
-    label: 'Histórico de Importações',
-    path: '/historico-importacoes',
   },
 ]
 
@@ -97,7 +119,16 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarRail />
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={signOut}>
+              <LogOut />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

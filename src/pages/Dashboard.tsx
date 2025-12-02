@@ -13,6 +13,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -128,29 +130,46 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="flex flex-col h-full">
-      <Header title="Dashboard" />
-      <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Visão Geral</h2>
-          <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="card-shadow border-none">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Vendas Mês Atual
-              </CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{monthlySales.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total operações (Vendas + Compras)
-              </p>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Acumulado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(totalCommission)}
+            </div>
+            <p className="text-xs text-muted-foreground">em comissões totais</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total de Operações
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalSales}</div>
+            <p className="text-xs text-muted-foreground">vendas registradas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(averageCommission)}
+            </div>
+            <p className="text-xs text-muted-foreground">comissão por venda</p>
+          </CardContent>
+        </Card>
+      </div>
 
           <Card className="card-shadow border-none">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

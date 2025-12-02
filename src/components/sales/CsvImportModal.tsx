@@ -1,385 +1,169 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { useState, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
-  Download,
   Upload,
   AlertCircle,
   FileSpreadsheet,
-  CheckCircle,
+  CheckCircle2,
 } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
-import { salesService } from '@/services/salesService'
-import useAppStore from '@/stores/useAppStore'
-import { useToast } from '@/hooks/use-toast'
 import { parseSalesContent } from '@/lib/parsers'
-import { ImportError } from '@/types'
-import { Link } from 'react-router-dom'
+import { salesService } from '@/services/salesService'
+import { ParsedSale, ImportError } from '@/types'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
 
 interface CsvImportModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess: () => void
 }
 
-export function CsvImportModal({ open, onOpenChange }: CsvImportModalProps) {
+export function CsvImportModal({
+  open,
+  onOpenChange,
+  onSuccess,
+}: CsvImportModalProps) {
   const [file, setFile] = useState<File | null>(null)
-  const [textInput, setTextInput] = useState('')
-  const [activeTab, setActiveTab] = useState('file')
+  const [parsedData, setParsedData] = useState<ParsedSale[]>([])
+  const [errors, setErrors] = useState<ImportError[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [validationErrors, setValidationErrors] = useState<ImportError[]>([])
-  const [importResult, setImportResult] = useState<{
-    success: boolean
-    imported: number
-    failed: number
-  } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { refreshSales } = useAppStore()
-  const { toast } = useToast()
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (!selectedFile) return
 
-  const downloadTemplate = () => {
-    const headers = [
-      'Data;Carro;Ano;Placa;Cliente;Gestauto;Valor Financiado;Retorno;Tipo;Comissão',
-    ]
-    const example =
-      '15/12/2023;Honda Civic;2020;ABC-1234;João Silva;Sim;50000,00;R1;Venda;1500,00'
-    const content = [...headers, example].join('\n')
+    setFile(selectedFile)
+    const text = await selectedFile.text()
+    const result = parseSalesContent(text)
 
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'modelo_importacao_vendas.csv')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    setParsedData(result.sales)
+    setErrors(result.errors)
   }
 
-  const processContent = async (content: string) => {
+  const handleImport = async () => {
+    if (!file || parsedData.length === 0) return
+
     setIsLoading(true)
-    setValidationErrors([])
-    setImportResult(null)
-
-    let parsedSales: any[] = []
-    let parseErrors: ImportError[] = []
-
     try {
-      const result = parseSalesContent(content)
-      parsedSales = result.sales
-      parseErrors = result.errors
-    } catch (err: any) {
-      console.error('Critical parsing error', err)
-      parseErrors.push({
-        row: 0,
-        message: `Erro crítico no processamento do arquivo: ${err.message}`,
-      })
-    }
-
-    const totalRecords = parsedSales.length + parseErrors.length
-    let importedRecords = 0
-    let failedRecords = parseErrors.length
-    let status: 'Sucesso' | 'Sucesso Parcial' | 'Falha' = 'Falha'
-    let currentErrors = [...parseErrors]
-
-    try {
-      if (parsedSales.length > 0) {
-        await salesService.importSales(parsedSales)
-        importedRecords = parsedSales.length
-
-        if (failedRecords === 0) {
-          status = 'Sucesso'
-          toast({
-            title: 'Importação concluída!',
-            description: `${parsedSales.length} registros foram importados com sucesso.`,
-          })
-        } else {
-          status = 'Sucesso Parcial'
-          toast({
-            title: 'Importação Parcial',
-            description: `${parsedSales.length} importados. ${failedRecords} falharam. Verifique os detalhes.`,
-            variant: 'warning',
-          })
-        }
-
-        setImportResult({
-          success: true,
-          imported: importedRecords,
-          failed: failedRecords,
-        })
-      } else {
-        status = 'Falha'
-        // If we had content but parsed 0 sales and 0 errors, it implies unrecognized format
-        if (totalRecords === 0 && content.trim().length > 0) {
-          currentErrors.push({
-            row: 0,
-            message:
-              'Não foi possível identificar nenhum registro de venda válido. Verifique se o cabeçalho contém "Data" e "Carro".',
-          })
-          failedRecords = 1
-        }
-
-        toast({
-          title: 'Falha na importação',
-          description:
-            'Nenhum registro pôde ser importado. Verifique os erros.',
-          variant: 'destructive',
-        })
-
-        setImportResult({
-          success: false,
-          imported: 0,
-          failed: failedRecords || 1,
-        })
-      }
-
-      if (parsedSales.length > 0) {
-        await refreshSales()
-      }
-    } catch (error: any) {
+      await salesService.uploadSales(parsedData)
+      await salesService.logImport(file.name, parsedData.length, 'sucesso')
+      toast.success(`${parsedData.length} vendas importadas com sucesso!`)
+      onSuccess()
+      onOpenChange(false)
+      setFile(null)
+      setParsedData([])
+      setErrors([])
+    } catch (error) {
       console.error(error)
-      status = 'Falha'
-      failedRecords = totalRecords
-      importedRecords = 0
-      currentErrors.push({
-        row: 0,
-        message: `Erro crítico no banco de dados: ${error.message || 'Desconhecido'}`,
-      })
-
-      toast({
-        title: 'Erro Crítico na Importação',
-        description:
-          'Falha ao salvar dados. Verifique o histórico de importações.',
-        variant: 'destructive',
-      })
-
-      setImportResult({
-        success: false,
-        imported: 0,
-        failed: totalRecords || 1,
-      })
+      await salesService.logImport(file.name, 0, 'erro')
+      toast.error('Falha na importação. Tente novamente.')
     } finally {
-      setValidationErrors(currentErrors)
-
-      try {
-        await salesService.logImport({
-          sourceType: activeTab === 'file' ? 'Arquivo CSV' : 'Texto Colado',
-          status,
-          totalRecords: totalRecords || 1,
-          importedRecords,
-          failedRecords: currentErrors.length,
-          errorDetails: currentErrors,
-        })
-      } catch (logErr) {
-        console.error('Failed to log import history', logErr)
-      }
-
       setIsLoading(false)
     }
   }
 
-  const handleFileImport = () => {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result as string
-      processContent(text)
-    }
-    reader.readAsText(file)
-  }
-
-  const handleTextImport = () => {
-    if (!textInput.trim()) return
-    processContent(textInput)
-  }
-
-  const handleClose = () => {
-    setFile(null)
-    setTextInput('')
-    setValidationErrors([])
-    setImportResult(null)
-    setActiveTab('file')
-    onOpenChange(false)
-  }
-
-  const resetState = () => {
-    setFile(null)
-    setTextInput('')
-    setValidationErrors([])
-    setImportResult(null)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Importar Vendas</DialogTitle>
+          <DialogTitle>Importar Vendas CSV</DialogTitle>
           <DialogDescription>
-            Importe seus dados via arquivo CSV ou cole o texto diretamente
-            (Excel, etc).
+            Selecione um arquivo CSV ou texto para importar as vendas. Isso
+            substituirá todos os registros existentes no banco de dados.
           </DialogDescription>
         </DialogHeader>
 
-        {!importResult ? (
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full flex-1 overflow-hidden flex flex-col"
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="file">Arquivo CSV</TabsTrigger>
-              <TabsTrigger value="text">Colar Texto</TabsTrigger>
-            </TabsList>
-
-            <div className="flex-1 overflow-y-auto py-4 min-h-[200px]">
-              <TabsContent value="file" className="space-y-4 mt-0 h-full">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={downloadTemplate}
-                    className="w-full"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Modelo
-                  </Button>
+        <div className="grid gap-4 py-4">
+          {!file ? (
+            <div
+              className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-muted/50 cursor-pointer transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground">
+                Clique para selecionar um arquivo (CSV, TXT)
+              </p>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".csv,.txt"
+                onChange={handleFileChange}
+              />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/20">
+                <FileSpreadsheet className="h-8 w-8 text-blue-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{file.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </p>
                 </div>
+                <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
+                  Trocar
+                </Button>
+              </div>
 
-                <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center space-y-4 h-[200px]">
-                  <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <label
-                      htmlFor="file-upload"
-                      className="cursor-pointer text-primary hover:underline font-medium"
-                    >
-                      Selecione um arquivo
-                    </label>
-                    <p>ou arraste e solte aqui</p>
-                    <p className="text-xs">CSV ou TXT</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 border rounded-lg bg-green-50 text-green-700 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="font-medium">
+                    {parsedData.length} registros válidos
+                  </span>
+                </div>
+                {errors.length > 0 && (
+                  <div className="p-3 border rounded-lg bg-red-50 text-red-700 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    <span className="font-medium">
+                      {errors.length} erros detectados
+                    </span>
                   </div>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    accept=".csv,.txt"
-                    className="hidden"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  />
-                  {file && (
-                    <div className="flex items-center gap-2 text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-                      {file.name}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="text" className="mt-0 h-full">
-                <Textarea
-                  placeholder="Cole aqui os dados das vendas (suporta tabelas copiadas do Excel)..."
-                  className="h-[300px] font-mono text-xs resize-none"
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                />
-              </TabsContent>
-            </div>
-          </Tabs>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center py-8 text-center space-y-4">
-            {importResult.success ? (
-              <CheckCircle className="h-16 w-16 text-green-500" />
-            ) : (
-              <AlertCircle className="h-16 w-16 text-destructive" />
-            )}
-            <h3 className="text-lg font-semibold">
-              {importResult.success
-                ? 'Processamento Concluído'
-                : 'Falha no Processamento'}
-            </h3>
-            <div className="flex gap-4 text-sm">
-              <div className="text-green-600 font-medium">
-                Importados: {importResult.imported}
-              </div>
-              <div className="text-red-600 font-medium">
-                Falhas: {importResult.failed}
-              </div>
-            </div>
-            <Button variant="outline" onClick={resetState} className="mt-4">
-              Nova Importação
-            </Button>
-          </div>
-        )}
-
-        {validationErrors.length > 0 && (
-          <Alert
-            variant="destructive"
-            className="mt-2 max-h-[150px] overflow-y-auto shrink-0"
-          >
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>
-              Registros com erro ({validationErrors.length})
-            </AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc pl-4 text-xs mt-2 space-y-1">
-                {validationErrors.slice(0, 10).map((err, idx) => (
-                  <li key={idx}>
-                    <strong>Linha {err.row}:</strong> {err.message}
-                  </li>
-                ))}
-                {validationErrors.length > 10 && (
-                  <li>... e mais {validationErrors.length - 10} erros.</li>
                 )}
-              </ul>
-              <div className="mt-2 pt-2 border-t border-destructive/30">
-                <Link
-                  to="/historico-importacoes"
-                  onClick={handleClose}
-                  className="text-xs font-semibold underline hover:text-destructive/80"
-                >
-                  Ver detalhes completos no Histórico
-                </Link>
               </div>
-            </AlertDescription>
-          </Alert>
-        )}
 
-        {!importResult && (
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={
-                activeTab === 'file' ? handleFileImport : handleTextImport
-              }
-              disabled={
-                isLoading ||
-                (activeTab === 'file' && !file) ||
-                (activeTab === 'text' && !textInput.trim())
-              }
-            >
-              {isLoading ? (
-                <>
-                  <Upload className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importar
-                </>
+              {errors.length > 0 && (
+                <ScrollArea className="h-[150px] w-full rounded-md border p-4">
+                  <h4 className="mb-2 text-sm font-semibold text-red-600">
+                    Erros de validação:
+                  </h4>
+                  <div className="space-y-2">
+                    {errors.map((err, idx) => (
+                      <Alert key={idx} variant="destructive" className="py-2">
+                        <AlertDescription className="text-xs">
+                          Linha {err.row}: {err.message}
+                        </AlertDescription>
+                      </Alert>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
-            </Button>
-          </DialogFooter>
-        )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleImport}
+            disabled={!file || isLoading || parsedData.length === 0}
+          >
+            {isLoading ? 'Importando...' : 'Importar Vendas'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -30,8 +30,105 @@ export default function Comissoes() {
     setGoalInput(monthlyGoal.toString())
   }, [monthlyGoal])
 
-  const totalSalesCommission = monthlySales.reduce(
-    (acc, s) => acc + s.commission,
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      if (viewMode === 'monthly') {
+        const salesData = await salesService.getSales({
+          month: selectedMonth,
+          year: selectedYear,
+        })
+        setSales(salesData)
+
+        const commissionData = await commissionsService.getMonthlyCommission(
+          selectedMonth,
+          selectedYear,
+        )
+
+        if (commissionData && commissionData.salary !== null) {
+          setSalary(commissionData.salary)
+        } else {
+          const now = new Date()
+          const currentDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          const targetDate = new Date(selectedYear, selectedMonth - 1, 1)
+
+          if (targetDate >= currentDate) {
+            setSalary(0)
+          } else {
+            setSalary(0)
+          }
+        }
+      } else {
+        const salesData = await salesService.getSales({ year: selectedYear })
+        const commissionsData =
+          await commissionsService.getYearlyCommissions(selectedYear)
+
+        const aggregated = Array.from({ length: 12 }, (_, i) => {
+          const month = i + 1
+          const monthSales = salesData.filter(
+            (s) => new Date(s.data_venda).getMonth() + 1 === month,
+          )
+          const monthCommission = commissionsData.find((c) => c.month === month)
+
+          const salesTotal = monthSales.reduce(
+            (acc, curr) => acc + curr.valor_comissao,
+            0,
+          )
+          const salaryTotal = monthCommission?.salary || 0
+          return {
+            month,
+            sales: salesTotal,
+            salary: salaryTotal,
+            total: salesTotal + salaryTotal,
+          }
+        })
+        setYearlyData(aggregated)
+        setSales(salesData)
+      }
+    } catch (error) {
+      console.error(error)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar dados',
+        description: 'Não foi possível carregar as comissões.',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedMonth, selectedYear, viewMode, toast])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const handleSaveSalary = async () => {
+    try {
+      await commissionsService.upsertMonthlyCommission({
+        month: selectedMonth,
+        year: selectedYear,
+        salary: salary,
+      })
+      toast({
+        title: 'Salário atualizado',
+        description: 'O salário fixo foi salvo com sucesso.',
+      })
+    } catch (error) {
+      console.error(error)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: 'Não foi possível atualizar o salário.',
+      })
+    }
+  }
+
+  const salesCommissionTotal = sales.reduce(
+    (acc, curr) => acc + curr.valor_comissao,
+    0,
+  )
+  const yearlySalesTotal = yearlyData.reduce((acc, curr) => acc + curr.sales, 0)
+  const yearlySalaryTotal = yearlyData.reduce(
+    (acc, curr) => acc + curr.salary,
     0,
   )
 
@@ -342,7 +439,34 @@ export default function Comissoes() {
             </Card>
           </div>
         </div>
+        <MonthYearPicker />
       </div>
+
+      <CommissionSummaryCards
+        viewMode={viewMode}
+        salesCommissionTotal={salesCommissionTotal}
+        salary={salary}
+        yearlySalesTotal={yearlySalesTotal}
+        yearlySalaryTotal={yearlySalaryTotal}
+        totalIncome={totalIncome}
+        salesCount={sales.filter((s) => s.valor_comissao > 0).length}
+      />
+
+      {viewMode === 'monthly' && (
+        <MonthlyCommissionDetails
+          salary={salary}
+          setSalary={setSalary}
+          onSaveSalary={handleSaveSalary}
+          sales={sales}
+        />
+      )}
+
+      {viewMode === 'yearly' && (
+        <YearlyCommissionTable
+          selectedYear={selectedYear}
+          yearlyData={yearlyData}
+        />
+      )}
     </div>
   )
 }

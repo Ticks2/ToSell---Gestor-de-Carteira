@@ -1,15 +1,6 @@
-import { useState, useMemo } from 'react'
-import { format } from 'date-fns'
-import { Edit2, Trash2, Plus, Download, Search, Upload } from 'lucide-react'
-import useAppStore from '@/stores/useAppStore'
-import { Sale, OperationType } from '@/types'
-import { Header } from '@/components/Header'
-import { MonthYearPicker } from '@/components/MonthYearPicker'
-import { SaleFormModal } from '@/components/sales/SaleFormModal'
-import { CsvImportModal } from '@/components/sales/CsvImportModal'
+import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -17,56 +8,28 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { useToast } from '@/hooks/use-toast'
-import { Skeleton } from '@/components/ui/skeleton'
+import { FileUp, Plus, Trash2, Edit, RefreshCw } from 'lucide-react'
+import { MonthYearPicker } from '@/components/MonthYearPicker'
+import { CsvImportModal } from '@/components/sales/CsvImportModal'
+import { SaleFormModal } from '@/components/sales/SaleFormModal'
+import { salesService } from '@/services/salesService'
+import { Sale } from '@/types'
+import useAppStore from '@/stores/useAppStore'
+import { formatCurrency } from '@/lib/utils'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
 export default function VendasMensais() {
-  const {
-    selectedDate,
-    setSelectedDate,
-    getMonthlyData,
-    addSale,
-    updateSale,
-    deleteSale,
-    isLoading,
-  } = useAppStore()
-  const { sales: monthlySales } = useMemo(
-    () => getMonthlyData(selectedDate),
-    [selectedDate, getMonthlyData],
-  )
-  const { toast } = useToast()
+  const { selectedMonth, selectedYear } = useAppStore()
+  const [sales, setSales] = useState<Sale[]>([])
+  const [loading, setLoading] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [saleModalOpen, setSaleModalOpen] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<'Todas' | OperationType>('Todas')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
-  const [editingSale, setEditingSale] = useState<Sale | undefined>(undefined)
-  const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
-
-  const filteredSales = useMemo(() => {
-    return monthlySales.filter((sale) => {
-      const matchesSearch =
-        sale.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.car.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.plate?.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesType = filterType === 'Todas' || sale.type === filterType
-      return matchesSearch && matchesType
-    })
-  }, [monthlySales, searchTerm, filterType])
-
-  const handleAddSale = async (data: any) => {
+  const fetchSales = useCallback(async () => {
+    setLoading(true)
     try {
       await addSale(data)
       setIsModalOpen(false)
@@ -74,16 +37,21 @@ export default function VendasMensais() {
         title: 'Venda registrada com sucesso!',
         description: `${data.car} - ${data.client}`,
       })
+      setSales(data)
     } catch (error) {
-      toast({
-        title: 'Erro ao registrar venda',
-        variant: 'destructive',
-      })
+      console.error(error)
+      toast.error('Erro ao carregar vendas')
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [selectedMonth, selectedYear])
 
-  const handleUpdateSale = async (data: any) => {
-    if (editingSale) {
+  useEffect(() => {
+    fetchSales()
+  }, [fetchSales])
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta venda?')) {
       try {
         await updateSale(editingSale.id, data)
         setEditingSale(undefined)
@@ -93,38 +61,26 @@ export default function VendasMensais() {
           description: 'As alterações foram salvas.',
         })
       } catch (error) {
-        toast({
-          title: 'Erro ao atualizar venda',
-          variant: 'destructive',
-        })
+        toast.error('Erro ao excluir venda')
       }
     }
   }
 
-  const handleDeleteSale = async () => {
-    if (saleToDelete) {
-      try {
-        await deleteSale(saleToDelete)
-        setSaleToDelete(null)
-        toast({ title: 'Venda removida.', variant: 'destructive' })
-      } catch (error) {
-        toast({
-          title: 'Erro ao remover venda',
-          variant: 'destructive',
-        })
-      }
-    }
+  const handleEdit = (sale: Sale) => {
+    setSelectedSale(sale)
+    setSaleModalOpen(true)
   }
 
-  const openEditModal = (sale: Sale) => {
-    setEditingSale(sale)
-    setIsModalOpen(true)
+  const handleNew = () => {
+    setSelectedSale(null)
+    setSaleModalOpen(true)
   }
 
-  const totalCommission = filteredSales.reduce(
-    (acc, s) => acc + s.commission,
+  const totalCommission = sales.reduce(
+    (acc, curr) => acc + (curr.valor_comissao || 0),
     0,
   )
+  const totalSales = sales.length
 
   return (
     <div className="flex flex-col h-full">
@@ -312,41 +268,142 @@ export default function VendasMensais() {
         </div>
       </div>
 
-      <SaleFormModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onSubmit={editingSale ? handleUpdateSale : handleAddSale}
-        initialData={editingSale}
-      />
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Vendas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalSales}</div>
+            <p className="text-xs text-muted-foreground">
+              no período selecionado
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Comissões
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(totalCommission)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              no período selecionado
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Média por Venda
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {totalSales > 0
+                ? formatCurrency(totalCommission / totalSales)
+                : formatCurrency(0)}
+            </div>
+            <p className="text-xs text-muted-foreground">comissão média</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Veículo</TableHead>
+                <TableHead>Placa</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Comissão</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sales.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Nenhuma venda encontrada para este período.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                sales.map((sale) => (
+                  <TableRow key={sale.id}>
+                    <TableCell>
+                      {new Date(sale.data_venda).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {sale.nome_cliente}
+                    </TableCell>
+                    <TableCell>
+                      {sale.carro}{' '}
+                      <span className="text-muted-foreground text-xs">
+                        ({sale.ano_carro})
+                      </span>
+                    </TableCell>
+                    <TableCell>{sale.placa || '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          sale.tipo_operacao === 'Compra'
+                            ? 'secondary'
+                            : 'default'
+                        }
+                      >
+                        {sale.tipo_operacao}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-green-600">
+                      {formatCurrency(sale.valor_comissao)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(sale)}
+                        >
+                          <Edit className="h-4 w-4 text-blue-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => sale.id && handleDelete(sale.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <CsvImportModal
-        open={isImportModalOpen}
-        onOpenChange={setIsImportModalOpen}
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onSuccess={fetchSales}
       />
 
-      <AlertDialog
-        open={!!saleToDelete}
-        onOpenChange={(open) => !open && setSaleToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O registro da venda será
-              permanentemente removido.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDeleteSale}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SaleFormModal
+        open={saleModalOpen}
+        onOpenChange={setSaleModalOpen}
+        sale={selectedSale}
+        onSuccess={fetchSales}
+      />
     </div>
   )
 }

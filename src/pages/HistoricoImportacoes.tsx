@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { AlertCircle, CheckCircle, AlertTriangle, Eye } from 'lucide-react'
-import { Header } from '@/components/Header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { salesService } from '@/services/salesService'
+import { ImportHistory } from '@/types'
 import {
   Table,
   TableBody,
@@ -12,27 +11,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { salesService } from '@/services/salesService'
-import { ImportHistory, ImportError } from '@/types'
-import { useToast } from '@/hooks/use-toast'
-import { Skeleton } from '@/components/ui/skeleton'
 
 export default function HistoricoImportacoes() {
   const [history, setHistory] = useState<ImportHistory[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedErrors, setSelectedErrors] = useState<ImportError[] | null>(
-    null,
-  )
-  const { toast } = useToast()
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -93,50 +74,34 @@ export default function HistoricoImportacoes() {
                 <TableHead>Data/Hora da Importação</TableHead>
                 <TableHead>Tipo de Origem</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-center">
-                  Total de Registros
-                </TableHead>
-                <TableHead className="text-center">
-                  Registros Importados
-                </TableHead>
-                <TableHead className="text-center">Falhas</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20 rounded-full" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-4 w-8 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-4 w-8 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-4 w-8 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-8 w-8 ml-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : history.length === 0 ? (
+              {history.map((h) => (
+                <TableRow key={h.id}>
+                  <TableCell>
+                    {new Date(h.data_importacao).toLocaleString('pt-BR')}
+                  </TableCell>
+                  <TableCell>{h.arquivo}</TableCell>
+                  <TableCell>{h.registros}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        h.status === 'sucesso' ? 'default' : 'destructive'
+                      }
+                    >
+                      {h.status === 'sucesso' ? 'Sucesso' : 'Erro'}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {history.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
-                    className="h-24 text-center text-muted-foreground"
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
                   >
-                    Nenhum histórico de importação encontrado.
+                    Nenhum histórico encontrado.
                   </TableCell>
                 </TableRow>
               ) : (

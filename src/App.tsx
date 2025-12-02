@@ -1,7 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from '@/components/ui/toaster'
-import { Toaster as Sonner } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { ThemeProvider } from 'next-themes'
 import Dashboard from './pages/Dashboard'
@@ -23,10 +26,15 @@ import ClientDetails from './pages/crm/ClientDetails'
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth()
 
-  if (loading) return null
-  if (session) return <Navigate to="/" replace />
+  if (loading)
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Carregando...
+      </div>
+    )
+  if (!session) return <Navigate to="/login" replace />
 
-  return <>{children}</>
+  return <Layout />
 }
 
 const App = () => (
