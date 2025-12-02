@@ -13,6 +13,20 @@ export interface Sale {
   created_at?: string
 }
 
+export interface MonthlyCommission {
+  id: string
+  user_id: string
+  month: number
+  year: number
+  salary: number | null
+  bonus: number | null
+  extras: number | null
+  surplus: number | null
+  returns: number | null
+  transfers: number | null
+  created_at: string
+}
+
 export interface ImportError {
   row: number
   message: string

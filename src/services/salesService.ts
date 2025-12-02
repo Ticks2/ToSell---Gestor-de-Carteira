@@ -19,14 +19,31 @@ export const salesService = {
       .select('*')
       .order('data_venda', { ascending: false })
 
-    if (filters?.month && filters?.year) {
-      const startDate = new Date(
-        filters.year,
-        filters.month - 1,
-        1,
-      ).toISOString()
-      const endDate = new Date(filters.year, filters.month, 0).toISOString()
-      query = query.gte('data_venda', startDate).lte('data_venda', endDate)
+    if (filters?.year) {
+      if (filters.month) {
+        // Specific Month Filter
+        const startDate = new Date(
+          filters.year,
+          filters.month - 1,
+          1,
+        ).toISOString()
+        const endDate = new Date(filters.year, filters.month, 0).toISOString()
+        query = query.gte('data_venda', startDate).lte('data_venda', endDate)
+      } else {
+        // Full Year Filter
+        const startDate = new Date(filters.year, 0, 1).toISOString()
+        // Last moment of the year: Dec 31st 23:59:59.999
+        const endDate = new Date(
+          filters.year,
+          11,
+          31,
+          23,
+          59,
+          59,
+          999,
+        ).toISOString()
+        query = query.gte('data_venda', startDate).lte('data_venda', endDate)
+      }
     }
 
     const { data, error } = await query
