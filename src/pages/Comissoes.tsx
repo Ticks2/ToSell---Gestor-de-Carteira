@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { getMonth, getYear } from 'date-fns'
+import { getMonth, getYear, isAfter, startOfMonth } from 'date-fns'
 import { Save } from 'lucide-react'
 import { CommissionData } from '@/types'
 
@@ -61,17 +61,46 @@ export default function Comissoes() {
     updateMonthlyGoal(Number(goalInput))
   }
 
+  // Logic to check for future date
+  const isFuture = isAfter(startOfMonth(selectedDate), startOfMonth(new Date()))
+
+  // Helper to decide input value display
+  const getInputValue = (value: number, field: string) => {
+    // For salary, default is 1991 if not set in DB (handled in store).
+    // But if future, we want empty by default if it matches default?
+    // Or just if it hasn't been explicitly touched?
+    // Store returns 1991 if 0 or null.
+    // Requirement: "future... input fields ... must be displayed as empty by default".
+    // "Users must be able to manually input and save values".
+    // If I saved 1991, it should show.
+    // But checking if it is "default" vs "saved" is hard without extra state.
+    // However, for future months, commissionData is virtually generated with defaults in store if not found in DB.
+    // If it is not found in DB, `id` will be undefined.
+
+    const isPersisted = !!commissionData.id
+
+    if (isFuture && !isPersisted) {
+      // Default to empty for non-persisted future data
+      if (field === 'salary' && value === 1991) return ''
+      if (value === 0) return ''
+    }
+
+    // Existing logic for current/past or persisted data
+    if (value === 0) return ''
+    return value
+  }
+
   return (
     <div className="flex flex-col h-full">
       <Header title="Comissões" />
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h2 className="text-lg font-semibold">Resumo Financeiro</h2>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-card p-1 rounded border shadow-sm">
-              <span className="text-sm font-medium pl-2">Meta Mensal: R$</span>
+          <div className="flex items-center gap-4 flex-wrap justify-end sm:flex-nowrap w-full sm:w-auto">
+            <div className="flex items-center gap-2 bg-card p-1 rounded border shadow-sm shrink-0">
+              <span className="text-sm font-medium pl-2">Meta: R$</span>
               <Input
-                className="w-24 h-8 border-none focus-visible:ring-0"
+                className="w-20 sm:w-24 h-8 border-none focus-visible:ring-0 p-1"
                 type="number"
                 value={goalInput}
                 onChange={(e) => setGoalInput(e.target.value)}
@@ -128,9 +157,7 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={
-                        commissionData.bonus === 0 ? '' : commissionData.bonus
-                      }
+                      value={getInputValue(commissionData.bonus, 'bonus')}
                       onChange={(e) =>
                         handleInputChange('bonus', e.target.value)
                       }
@@ -147,11 +174,7 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={
-                        commissionData.returns === 0
-                          ? ''
-                          : commissionData.returns
-                      }
+                      value={getInputValue(commissionData.returns, 'returns')}
                       onChange={(e) =>
                         handleInputChange('returns', e.target.value)
                       }
@@ -168,10 +191,11 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={commissionData.salary || 1991}
+                      value={getInputValue(commissionData.salary, 'salary')}
                       onChange={(e) =>
                         handleInputChange('salary', e.target.value)
                       }
+                      placeholder="0.00"
                     />
                   </div>
                 </div>
@@ -184,11 +208,10 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={
-                        commissionData.transfers === 0
-                          ? ''
-                          : commissionData.transfers
-                      }
+                      value={getInputValue(
+                        commissionData.transfers,
+                        'transfers',
+                      )}
                       onChange={(e) =>
                         handleInputChange('transfers', e.target.value)
                       }
@@ -205,11 +228,7 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={
-                        commissionData.surplus === 0
-                          ? ''
-                          : commissionData.surplus
-                      }
+                      value={getInputValue(commissionData.surplus, 'surplus')}
                       onChange={(e) =>
                         handleInputChange('surplus', e.target.value)
                       }
@@ -226,9 +245,7 @@ export default function Comissoes() {
                     <Input
                       type="number"
                       className="pl-6"
-                      value={
-                        commissionData.extras === 0 ? '' : commissionData.extras
-                      }
+                      value={getInputValue(commissionData.extras, 'extras')}
                       onChange={(e) =>
                         handleInputChange('extras', e.target.value)
                       }

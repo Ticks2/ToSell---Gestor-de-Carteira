@@ -1,13 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
-import { ClientInteraction, ClientAlert, Client, Sale } from '@/types'
-import {
-  addDays,
-  format,
-  getYear,
-  isSameDay,
-  parseISO,
-  subDays,
-} from 'date-fns'
+import { ClientInteraction, ClientAlert, Client } from '@/types'
+import { format, getYear, isSameDay, parseISO, subDays } from 'date-fns'
 import { salesService } from './salesService'
 
 export const crmService = {
@@ -63,11 +56,12 @@ export const crmService = {
 
   // Alerts
   async getAlerts(userId: string) {
+    // Updated to fetch ALL alerts (both dismissed and active)
+    // This allows the UI to filter them and prevents recreation of dismissed automated alerts
     const { data, error } = await supabase
       .from('client_alerts')
       .select('*, client:clients(*)')
       .eq('user_id', userId)
-      .eq('is_dismissed', false)
       .order('alert_date', { ascending: true })
 
     if (error) throw error
@@ -136,7 +130,7 @@ export const crmService = {
     const [clients, sales, existingAlerts] = await Promise.all([
       this.getClients(userId),
       salesService.getSales(userId),
-      this.getAlerts(userId), // Active alerts
+      this.getAlerts(userId), // Now fetches all, so we can check against dismissed ones too
     ])
 
     const alertsToCreate: Partial<ClientAlert>[] = []
@@ -160,7 +154,6 @@ export const crmService = {
         )
 
         // Check if birthday is upcoming (e.g. within next 30 days) or today
-        // User story says: "upcoming or on the current date"
         const checkDate = (date: Date) => {
           const diffTime = date.getTime() - today.getTime()
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
@@ -183,12 +176,6 @@ export const crmService = {
           )
 
           if (!exists) {
-            // Double check persistent "dismissed" alerts to avoid spamming?
-            // For simplicity, we only check active alerts here, but ideally should check DB for any alert for this event.
-            // We'll assume if it's dismissed it won't be in 'existingAlerts' (which fetches is_dismissed=false).
-            // But we don't want to recreate dismissed alerts.
-            // The requirement says "if an alert for that birthday doesn't already exist and is not dismissed".
-            // So we need to check ALL alerts for this user/type/date
             alertsToCreate.push({
               client_id: client.id,
               user_id: userId,
@@ -203,19 +190,17 @@ export const crmService = {
 
     // 3. Check Post-Sale (80 days)
     const eightyDaysAgo = subDays(today, 80)
-    const eightyDaysAgoStr = format(eightyDaysAgo, 'yyyy-MM-dd')
 
     sales.forEach((sale) => {
       if (sale.clientId) {
         // Check if sale date was exactly 80 days ago (or around that time if we want a window)
-        // User story says: "sale date was 80 days prior"
         if (isSameDay(sale.date, eightyDaysAgo)) {
           // Check duplicates
           const exists = existingAlerts.some(
             (a) =>
               a.client_id === sale.clientId &&
               a.alert_type === 'post-sale' &&
-              a.message?.includes(sale.car), // Rough check as we don't have ref ID
+              a.message?.includes(sale.car),
           )
 
           if (!exists) {
@@ -231,11 +216,8 @@ export const crmService = {
       }
     })
 
-    // 4. Verify against database for dismissed alerts to avoid recreation
+    // 4. Verify against database for dismissed alerts to avoid recreation (Double check)
     if (alertsToCreate.length > 0) {
-      // We need to verify if these specific alerts were already created (and potentially dismissed)
-      // This is getting complex to do in one batch without proper unique constraints.
-      // We will do a check for each potential alert
       for (const alert of alertsToCreate) {
         const { data } = await supabase
           .from('client_alerts')

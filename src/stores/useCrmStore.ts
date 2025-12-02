@@ -21,6 +21,7 @@ interface CrmState {
   updateInteractionStatus: (id: string, status: string) => Promise<void>
   createAlert: (alert: Partial<ClientAlert>) => Promise<void>
   dismissAlert: (id: string) => Promise<void>
+  deleteClient: (id: string) => Promise<void>
   setClientStatus: (
     clientId: string,
     status: 'client' | 'lead',
@@ -137,13 +138,31 @@ const useCrmStore = create<CrmState>((set, get) => ({
   },
 
   dismissAlert: async (id) => {
+    // Optimistic update: Find alert and mark as dismissed locally
     set((state) => ({
-      alerts: state.alerts.filter((a) => a.id !== id),
+      alerts: state.alerts.map((a) =>
+        a.id === id ? { ...a, is_dismissed: true } : a,
+      ),
     }))
     try {
       await crmService.dismissAlert(id)
     } catch (error) {
       console.error('Error dismissing alert', error)
+      get().fetchAlerts() // Revert on error
+    }
+  },
+
+  deleteClient: async (id) => {
+    // Optimistic remove
+    set((state) => ({
+      clients: state.clients.filter((c) => c.id !== id),
+      leads: state.leads.filter((c) => c.id !== id),
+    }))
+    try {
+      await clientService.deleteClient(id)
+    } catch (error) {
+      console.error('Error deleting client', error)
+      get().fetchClients() // Revert on error
     }
   },
 

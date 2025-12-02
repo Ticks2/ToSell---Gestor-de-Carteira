@@ -13,19 +13,33 @@ import {
 } from '@/components/ui/table'
 import { Header } from '@/components/Header'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Search, User, Edit2 } from 'lucide-react'
+import { Plus, Search, User, Edit2, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { ClientFormModal } from '@/components/crm/ClientFormModal'
 import { Client } from '@/types'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useToast } from '@/hooks/use-toast'
 
 export default function CrmClients() {
-  const { clients, leads, fetchClients, isLoading } = useCrmStore()
+  const { clients, leads, fetchClients, deleteClient, isLoading } =
+    useCrmStore()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('clients')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | undefined>(
     undefined,
   )
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchClients()
@@ -54,6 +68,22 @@ export default function CrmClients() {
 
   const handleSuccess = () => {
     fetchClients()
+  }
+
+  const handleDeleteClick = (client: Client) => {
+    setClientToDelete(client)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (clientToDelete) {
+      await deleteClient(clientToDelete.id)
+      toast({
+        title: 'Cliente removido',
+        description:
+          'O cliente e todos os seus dados foram removidos com sucesso.',
+      })
+      setClientToDelete(null)
+    }
   }
 
   return (
@@ -132,13 +162,23 @@ export default function CrmClients() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(client)}
-                      >
-                        <Edit2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(client)}
+                        >
+                          <Edit2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(client)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ),
@@ -173,6 +213,34 @@ export default function CrmClients() {
         initialData={editingClient}
         onSuccess={handleSuccess}
       />
+
+      <AlertDialog
+        open={!!clientToDelete}
+        onOpenChange={(open) => !open && setClientToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o
+              cliente{' '}
+              <span className="font-semibold text-foreground">
+                {clientToDelete?.full_name}
+              </span>{' '}
+              e todos os dados associados (vendas, interações, alertas).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir Cliente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

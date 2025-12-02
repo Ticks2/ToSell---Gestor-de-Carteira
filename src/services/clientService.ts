@@ -37,6 +37,7 @@ export const clientService = {
         city: client.city || null,
         phone: client.phone || null,
         email: client.email || null,
+        status: client.status || 'client',
       })
       .select()
       .single()
@@ -54,6 +55,7 @@ export const clientService = {
         city: updates.city || null,
         phone: updates.phone || null,
         email: updates.email || null,
+        status: updates.status,
       })
       .eq('id', id)
       .select()
@@ -61,6 +63,11 @@ export const clientService = {
 
     if (error) throw error
     return data as Client
+  },
+
+  async deleteClient(id: string) {
+    const { error } = await supabase.from('clients').delete().eq('id', id)
+    if (error) throw error
   },
 
   async searchClients(query: string, userId?: string) {
