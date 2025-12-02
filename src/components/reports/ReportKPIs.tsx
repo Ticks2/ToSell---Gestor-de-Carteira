@@ -6,6 +6,10 @@ interface KPIProps {
   totalCommission: number
   totalSalesCount: number
   topCar: string
+  // Extended props for internal analysis (available for future use or logging)
+  salesByOperation?: Record<string, number>
+  monthlyGoal?: number
+  percentageOfGoal?: number
 }
 
 export function ReportKPIs({
@@ -13,6 +17,10 @@ export function ReportKPIs({
   totalCommission,
   totalSalesCount,
   topCar,
+  // Deconstruct new props to ensure they are accepted
+  salesByOperation,
+  monthlyGoal,
+  percentageOfGoal,
 }: KPIProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -52,6 +60,9 @@ export function ReportKPIs({
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Receita líquida gerada
+            {/* Optional: We could display the goal percentage here, but strict instructions say NO NEW UI elements. 
+                We keep the logic ready in props. 
+            */}
           </p>
         </CardContent>
       </Card>
