@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from 'react'
 import { Sale, CommissionData } from '@/types'
-import { isSameMonth, getMonth, getYear } from 'date-fns'
+import { isSameMonth, getMonth, getYear, startOfMonth } from 'date-fns'
 import { salesService } from '@/services/salesService'
 import { profileService } from '@/services/profileService'
 import { commissionService } from '@/services/commissionService'
@@ -120,6 +120,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     async (year: number, month: number, data: Partial<CommissionData>) => {
       if (!user) return
 
+      const today = startOfMonth(new Date())
+      const targetDate = startOfMonth(new Date(year, month))
+      // Default salary is 0 for current/future months, 1991 for past
+      const defaultSalary = targetDate >= today ? 0 : 1991
+
+      // Check if entry exists before optimistic update changes state
+      const existing = commissions.find(
+        (c) => c.year === year && c.month === month,
+      )
+
       // Optimistic update
       setCommissions((prev) => {
         const existingIndex = prev.findIndex(
@@ -140,7 +150,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               transfers: 0,
               surplus: 0,
               extras: 0,
-              salary: 1991,
+              salary: defaultSalary,
               ...data,
             },
           ]
@@ -148,11 +158,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       })
 
       try {
-        await commissionService.upsertCommission(user.id, {
+        const payload = {
           year,
           month,
           ...data,
-        })
+        } as any
+
+        // If creating a new entry (not existing in state) and salary is not provided in update data,
+        // we inject the default salary to ensure it overrides DB default if needed (e.g. 0 instead of 1991).
+        if (!existing && payload.salary === undefined) {
+          payload.salary = defaultSalary
+        }
+
+        await commissionService.upsertCommission(user.id, payload)
       } catch (error) {
         console.error('Error updating commission:', error)
         toast({
@@ -162,7 +180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         })
       }
     },
-    [user, toast],
+    [user, toast, commissions],
   )
 
   const updateMonthlyGoal = useCallback(
@@ -189,6 +207,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const monthlySales = sales.filter((s) => isSameMonth(s.date, date))
 
+      const today = startOfMonth(new Date())
+      const targetDate = startOfMonth(new Date(year, month))
+      // Default salary is 0 for current/future months, 1991 for past
+      const defaultSalary = targetDate >= today ? 0 : 1991
+
       const commission = commissions.find(
         (c) => c.year === year && c.month === month,
       ) || {
@@ -199,7 +222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         transfers: 0,
         surplus: 0,
         extras: 0,
-        salary: 1991,
+        salary: defaultSalary,
       }
 
       return {
