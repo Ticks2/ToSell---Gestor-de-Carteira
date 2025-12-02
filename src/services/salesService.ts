@@ -28,10 +28,10 @@ const mapToAppType = (dbSale: SaleDB): Sale => ({
   car: dbSale.carro,
   year: dbSale.ano_carro,
   plate: dbSale.placa || undefined,
-  client: dbSale.nome_cliente, // Always use stored name, or fallback to dbSale.clients?.full_name if empty? usually nome_cliente has the snapshot
+  client: dbSale.nome_cliente,
   clientId: dbSale.client_id || undefined,
   clientDetails: dbSale.clients || undefined,
-  gestauto: dbSale.gestauto || undefined, // Map string directly
+  gestauto: dbSale.gestauto || undefined,
   financedValue: dbSale.valor_financiado || undefined,
   saleValue: dbSale.valor_venda || undefined,
   returnType: (dbSale.retorno as any) || undefined,
@@ -39,6 +39,7 @@ const mapToAppType = (dbSale: SaleDB): Sale => ({
   commission: dbSale.valor_comissao,
   status: (dbSale.status as 'pending' | 'paid') || 'pending',
   createdAt: new Date(dbSale.created_at),
+  userId: dbSale.user_id || undefined,
 })
 
 const mapToDBType = (
@@ -51,7 +52,7 @@ const mapToDBType = (
   placa: sale.plate || null,
   nome_cliente: sale.client,
   client_id: sale.clientId || null,
-  gestauto: sale.gestauto || null, // Map string directly
+  gestauto: sale.gestauto || null,
   valor_financiado: sale.financedValue || null,
   valor_venda: sale.saleValue || null,
   retorno: sale.returnType || null,
@@ -212,10 +213,7 @@ export const salesService = {
   },
 
   async uploadSales(sales: any[]) {
-    // Map imported sales to DB format, treating missing commissions as 0
     const dbSales = sales.map((s) => {
-      // Find if we can map client name to existing ID?
-      // For bulk import we usually don't do heavy lookups here for performance, just raw data.
       return {
         data_venda: s.data_venda,
         carro: s.carro,
@@ -224,7 +222,7 @@ export const salesService = {
         nome_cliente: s.nome_cliente,
         gestauto: s.gestauto,
         valor_financiado: s.valor_financiado,
-        valor_venda: s.valor_venda || 0, // Fallback if missing
+        valor_venda: s.valor_venda || 0,
         retorno: s.retorno,
         tipo_operacao: s.tipo_operacao,
         valor_comissao: s.valor_comissao,

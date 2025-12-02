@@ -1,108 +1,84 @@
-export type OperationType =
-  | 'Venda'
-  | 'Compra'
-  | 'Troca'
-  | 'Financiamento'
-  | 'Consignação'
+export type OperationType = 'Venda' | 'Compra'
 
 export interface Client {
   id: string
   user_id: string
   full_name: string
-  email?: string | null
-  phone?: string | null
-  city?: string | null
   birth_date?: string | null
+  city?: string | null
+  phone?: string | null
+  email?: string | null
   status: 'client' | 'lead'
   created_at: string
 }
 
 export interface Sale {
   id: string
-  userId?: string
+  type: OperationType
+  date: Date
   clientId?: string
-  client: string // Nome do Cliente
-  clientDetails?: Client
+  client: string // Name snapshot
+  clientDetails?: Client // Joined data
   car: string
   year: number
   plate?: string
-  date: Date
-  type: OperationType | string
   saleValue?: number
   financedValue?: number
   commission: number
-  gestauto?: string // Changed to string for text input
   returnType?: string
+  gestauto?: string
   status: 'pending' | 'paid'
   createdAt: Date
+  userId?: string
+}
+
+export interface CommissionData {
+  id?: string
+  user_id?: string
+  month: number
+  year: number
+  bonus: number | null
+  returns: number | null
+  transfers: number | null
+  surplus: number | null
+  extras: number | null
+  salary: number | null
+  created_at?: string
 }
 
 export interface ClientInteraction {
   id: string
-  user_id: string
   client_id: string
-  client?: Client
+  user_id: string
   interaction_type: string
   interaction_date: string
-  notes?: string | null
   next_contact_date?: string | null
+  notes?: string | null
   status: string
   created_at: string
+  client?: Client
 }
 
 export interface ClientAlert {
   id: string
-  user_id: string
   client_id: string
-  client?: Client
+  user_id: string
   alert_type: string
   alert_date: string
   message?: string | null
   is_dismissed?: boolean | null
   is_email_notified?: boolean | null
   created_at: string
-}
-
-export interface CommissionData {
-  id?: string
-  user_id?: string
-  year: number
-  month: number
-  bonus?: number | null
-  returns?: number | null
-  transfers?: number | null
-  surplus?: number | null
-  extras?: number | null
-  salary?: number | null
-  created_at?: string
+  client?: Client
 }
 
 export interface ImportHistory {
   id: string
   createdAt: Date
   sourceType: string
-  status: 'success' | 'error' | 'processing'
+  status: string
   totalRecords: number
   importedRecords: number
   failedRecords: number
-  errorDetails: ImportError[] | null
-}
-
-export interface ImportError {
-  row: number
-  message: string
-  data?: any
-}
-
-export interface ParsedSale {
-  data_venda: string
-  carro: string
-  ano_carro: number
-  placa: string | null
-  nome_cliente: string
-  gestauto: string | null
-  valor_financiado: number | null
-  retorno: string | null
-  tipo_operacao: string
-  valor_comissao: number
+  errorDetails: any[]
 }

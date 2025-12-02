@@ -23,12 +23,20 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
 
 export function AppSidebar() {
   const { pathname } = useLocation()
   const { signOut } = useAuth()
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  const handleMobileClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   const items = [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -68,7 +76,7 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={handleMobileClick}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -90,7 +98,7 @@ export function AppSidebar() {
                     isActive={pathname.startsWith(item.url)}
                     tooltip={item.title}
                   >
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={handleMobileClick}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -105,7 +113,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Minha Conta">
-              <Link to="/account">
+              <Link to="/account" onClick={handleMobileClick}>
                 <Settings />
                 <span>Minha Conta</span>
               </Link>

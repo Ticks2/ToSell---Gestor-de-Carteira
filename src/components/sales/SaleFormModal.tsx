@@ -47,14 +47,21 @@ const saleSchema = z
     car: z.string().min(1, 'Modelo do veículo é obrigatório'),
     year: z.coerce
       .number()
-      .min(1900, 'Ano inválido')
+      .min(1980, 'Ano inválido (mínimo 1980)')
       .max(new Date().getFullYear() + 2, 'Ano inválido'),
-    plate: z.string().optional(),
+    plate: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val) return true
+        // Simplified regex to check roughly correct format if provided
+        return /^[A-Z]{3}-?[0-9][A-Z0-9][0-9]{2}$/i.test(val)
+      }, 'Placa inválida'),
 
     // Financial Fields
     saleValue: z.coerce.number().optional(),
     financedValue: z.coerce.number().optional(),
-    commission: z.coerce.number().min(0, 'Comissão não pode ser negativa'),
+    commission: z.coerce.number().min(0.01, 'Comissão deve ser maior que zero'),
     returnType: z.string().optional(),
     gestauto: z.boolean().default(false),
   })
@@ -184,7 +191,7 @@ export function SaleFormModal({
           returnType: '',
           gestauto: false,
         })
-        setIsNewClient(false)
+        setIsNewClient(fixedClientId ? false : false)
       }
     }
   }, [open, initialData, fixedClientId, form])
@@ -213,16 +220,21 @@ export function SaleFormModal({
           })
           finalClientId = newClient.id
           clientName = newClient.full_name
+
+          // Update local clients list in case user reopens without refresh
+          setClients((prev) => [...prev, newClient])
         }
       } else {
         const selected = clients.find((c) => c.id === finalClientId)
         clientName = selected ? selected.full_name : 'Cliente'
       }
 
-      if (!finalClientId) throw new Error('Cliente obrigatório')
+      if (!finalClientId) {
+        throw new Error('Cliente obrigatório')
+      }
 
       // 2. Prepare Sale Data
-      const saleData = {
+      const saleData: Omit<Sale, 'id' | 'createdAt'> = {
         type: values.type,
         date: parseISO(values.date),
         clientId: finalClientId,
@@ -253,11 +265,11 @@ export function SaleFormModal({
 
       if (onSuccess) onSuccess()
       onOpenChange(false)
-    } catch (error) {
-      console.error(error)
+    } catch (error: any) {
+      console.error('Error saving operation:', error)
       toast({
         title: 'Erro ao salvar operação',
-        description: 'Verifique os dados e tente novamente.',
+        description: error.message || 'Verifique os dados e tente novamente.',
         variant: 'destructive',
       })
     } finally {
