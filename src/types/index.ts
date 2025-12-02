@@ -22,6 +22,7 @@ export interface Sale {
   client: string // Display name (kept for compatibility)
   clientId?: string // Link to client record
   clientDetails?: Client // Full object if available
+  clientCity?: string // Helper for imports that don't link immediately
 
   gestauto?: boolean
   financedValue?: number

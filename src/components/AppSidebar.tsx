@@ -5,6 +5,8 @@ import {
   FileText,
   History,
   Users,
+  Bell,
+  LayoutDashboard,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
@@ -20,11 +22,12 @@ import {
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { icon: Home, label: 'Dashboard', path: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FileText, label: 'Vendas Mensais', path: '/vendas' },
   { icon: DollarSign, label: 'Comissões', path: '/comissoes' },
   { icon: BarChart2, label: 'Relatórios', path: '/relatorios' },
   { icon: Users, label: 'CRM', path: '/crm/clients' },
+  { icon: Bell, label: 'Alertas CRM', path: '/crm/alerts' },
   {
     icon: History,
     label: 'Histórico de Importações',
@@ -34,7 +37,13 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation()
-  const { open } = useSidebar()
+  const { open, isMobile, setOpenMobile } = useSidebar()
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   return (
     <Sidebar
@@ -56,14 +65,16 @@ export function AppSidebar() {
         <SidebarMenu>
           {navItems.map((item) => {
             const isActive =
-              location.pathname.startsWith(item.path) ||
-              (item.path === '/' && location.pathname === '/')
+              location.pathname === item.path ||
+              (item.path !== '/' && location.pathname.startsWith(item.path))
+
             return (
               <SidebarMenuItem key={item.path}>
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
                   tooltip={item.label}
+                  onClick={handleLinkClick}
                   className={cn(
                     'h-12 transition-all duration-200 ease-in-out rounded-md mb-1',
                     isActive
