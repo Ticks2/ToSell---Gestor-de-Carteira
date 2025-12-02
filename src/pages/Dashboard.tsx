@@ -1,5 +1,5 @@
 import { useMemo, useCallback, useEffect } from 'react'
-import { format, subMonths, getYear, getMonth } from 'date-fns'
+import { format, getYear, getMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, DollarSign, Users, Target, Bell } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis } from 'recharts'

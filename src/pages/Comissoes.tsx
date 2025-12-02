@@ -68,11 +68,6 @@ export default function Comissoes() {
 
   // Helper to decide input value display
   const getInputValue = (value: number, field: string) => {
-    // Ensure ID exists (not a placeholder) to check strict persistence if needed,
-    // but checking strict persistence is tricky with optimistic UI.
-    // We rely on the fact that if commissionData.id is present (and not empty), it's persisted.
-    // But getMonthlyData returns a placeholder object with empty ID if not found.
-
     const isPersisted = !!commissionData.id
 
     if (isFuture && !isPersisted) {
@@ -80,7 +75,6 @@ export default function Comissoes() {
       if (value === 0) return ''
     }
 
-    // Existing logic for current/past or persisted data
     if (value === 0) return ''
     return value
   }
@@ -109,7 +103,8 @@ export default function Comissoes() {
                 <Save className="h-4 w-4" />
               </Button>
             </div>
-            <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
+            {/* Fixed incorrect prop name from onChange to setDate */}
+            <MonthYearPicker date={selectedDate} setDate={setSelectedDate} />
           </div>
         </div>
 
