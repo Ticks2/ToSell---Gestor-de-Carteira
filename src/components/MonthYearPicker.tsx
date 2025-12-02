@@ -26,7 +26,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Check,
 } from 'lucide-react'
 
 interface MonthYearPickerProps {

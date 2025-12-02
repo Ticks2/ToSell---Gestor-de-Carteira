@@ -17,9 +17,10 @@ import { useToast } from '@/hooks/use-toast'
 
 interface HeaderProps {
   title: string
+  children?: React.ReactNode
 }
 
-export function Header({ title }: HeaderProps) {
+export function Header({ title, children }: HeaderProps) {
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -45,16 +46,22 @@ export function Header({ title }: HeaderProps) {
           {title}
         </h1>
       </div>
-      <div className="flex-1 flex justify-center max-w-md mx-auto hidden sm:flex">
-        <div className="relative w-full">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar..."
-            className="w-full bg-secondary pl-9 md:w-[300px] lg:w-[400px] border-none focus-visible:ring-1"
-          />
-        </div>
+
+      <div className="flex-1 flex justify-center max-w-md mx-auto">
+        {children ? (
+          <div className="w-full flex justify-center">{children}</div>
+        ) : (
+          <div className="relative w-full hidden sm:flex">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar..."
+              className="w-full bg-secondary pl-9 md:w-[300px] lg:w-[400px] border-none focus-visible:ring-1"
+            />
+          </div>
+        )}
       </div>
+
       <div className="ml-auto flex items-center gap-2">
         <ToggleTheme />
         <Button

@@ -18,6 +18,7 @@ import { Plus, Loader2 } from 'lucide-react'
 import { SaleFormModal } from '@/components/sales/SaleFormModal'
 import { formatCurrency } from '@/lib/utils'
 import { format, startOfMonth, isSameMonth, isSameYear } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 export default function VendasMensais() {
   const { user } = useAuth()
@@ -82,7 +83,9 @@ export default function VendasMensais() {
 
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Registros de Vendas</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Registros de Vendas
+          </h2>
           <Button onClick={handleNew}>
             <Plus className="mr-2 h-4 w-4" />
             Nova Venda
@@ -93,7 +96,9 @@ export default function VendasMensais() {
           <CardHeader>
             <CardTitle>
               Vendas de{' '}
-              {format(date, viewMode === 'monthly' ? 'MMMM/yyyy' : 'yyyy')}
+              {format(date, viewMode === 'monthly' ? 'MMMM/yyyy' : 'yyyy', {
+                locale: ptBR,
+              })}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -102,37 +107,53 @@ export default function VendasMensais() {
                 <TableRow>
                   <TableHead>Data</TableHead>
                   <TableHead>Veículo</TableHead>
+                  <TableHead>Cliente</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Comissão</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      <Loader2 className="animate-spin mx-auto" />
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      <div className="flex justify-center items-center w-full h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : sales.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
-                      className="text-center text-muted-foreground"
+                      colSpan={7}
+                      className="h-24 text-center text-muted-foreground"
                     >
-                      Nenhuma venda registrada.
+                      Nenhuma venda registrada neste período.
                     </TableCell>
                   </TableRow>
                 ) : (
                   sales.map((sale) => (
                     <TableRow key={sale.id}>
                       <TableCell>{format(sale.date, 'dd/MM/yyyy')}</TableCell>
-                      <TableCell>{sale.car}</TableCell>
+                      <TableCell className="font-medium">{sale.car}</TableCell>
+                      <TableCell>{sale.client}</TableCell>
                       <TableCell>
                         {formatCurrency(sale.saleValue || 0)}
                       </TableCell>
                       <TableCell>{formatCurrency(sale.commission)}</TableCell>
                       <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                            sale.status === 'paid'
+                              ? 'bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-500/30'
+                              : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20 dark:bg-yellow-900/20 dark:text-yellow-400 dark:ring-yellow-500/30'
+                          }`}
+                        >
+                          {sale.status === 'paid' ? 'Pago' : 'Pendente'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
