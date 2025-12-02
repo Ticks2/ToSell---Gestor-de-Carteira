@@ -4,6 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { ThemeProvider } from 'next-themes'
+import { AppProvider } from '@/stores/useAppStore'
 import Dashboard from './pages/Dashboard'
 import VendasMensais from './pages/VendasMensais'
 import Comissoes from './pages/Comissoes'
@@ -36,40 +37,42 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <TooltipProvider>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              }
-            />
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/vendas" element={<VendasMensais />} />
-              <Route path="/comissoes" element={<Comissoes />} />
-              <Route path="/relatorios" element={<Relatorios />} />
+          <AppProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
               <Route
-                path="/historico-importacoes"
-                element={<HistoricoImportacoes />}
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                }
               />
-              <Route path="/account" element={<Account />} />
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/vendas" element={<VendasMensais />} />
+                <Route path="/comissoes" element={<Comissoes />} />
+                <Route path="/relatorios" element={<Relatorios />} />
+                <Route
+                  path="/historico-importacoes"
+                  element={<HistoricoImportacoes />}
+                />
+                <Route path="/account" element={<Account />} />
 
-              {/* CRM Routes */}
-              <Route
-                path="/crm"
-                element={<Navigate to="/crm/clients" replace />}
-              />
-              <Route path="/crm/clients" element={<CrmClients />} />
-              <Route path="/crm/kanban" element={<CrmKanban />} />
-              <Route path="/crm/alerts" element={<CrmAlerts />} />
-              <Route path="/crm/clients/:id" element={<ClientDetails />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+                {/* CRM Routes */}
+                <Route
+                  path="/crm"
+                  element={<Navigate to="/crm/clients" replace />}
+                />
+                <Route path="/crm/clients" element={<CrmClients />} />
+                <Route path="/crm/kanban" element={<CrmKanban />} />
+                <Route path="/crm/alerts" element={<CrmAlerts />} />
+                <Route path="/crm/clients/:id" element={<ClientDetails />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AppProvider>
         </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>

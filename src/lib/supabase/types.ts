@@ -23,6 +23,7 @@ export type Database = {
           created_at: string
           id: string
           is_dismissed: boolean | null
+          is_email_notified: boolean | null
           message: string | null
           user_id: string
         }
@@ -33,6 +34,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_dismissed?: boolean | null
+          is_email_notified?: boolean | null
           message?: string | null
           user_id: string
         }
@@ -43,6 +45,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_dismissed?: boolean | null
+          is_email_notified?: boolean | null
           message?: string | null
           user_id?: string
         }
@@ -179,6 +182,48 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_clients_log: {
+        Row: {
+          birth_date: string | null
+          city: string | null
+          deleted_at: string
+          email: string | null
+          full_name: string | null
+          log_id: string
+          original_client_id: string | null
+          original_created_at: string | null
+          phone: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          city?: string | null
+          deleted_at?: string
+          email?: string | null
+          full_name?: string | null
+          log_id?: string
+          original_client_id?: string | null
+          original_created_at?: string | null
+          phone?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          city?: string | null
+          deleted_at?: string
+          email?: string | null
+          full_name?: string | null
+          log_id?: string
+          original_client_id?: string | null
+          original_created_at?: string | null
+          phone?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       import_history: {
         Row: {
           created_at: string
@@ -270,6 +315,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           monthly_commission_target: number | null
+          notification_settings: Json | null
           role: Database['public']['Enums']['user_role']
           user_id: string
         }
@@ -280,6 +326,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           monthly_commission_target?: number | null
+          notification_settings?: Json | null
           role?: Database['public']['Enums']['user_role']
           user_id: string
         }
@@ -290,6 +337,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           monthly_commission_target?: number | null
+          notification_settings?: Json | null
           role?: Database['public']['Enums']['user_role']
           user_id?: string
         }
