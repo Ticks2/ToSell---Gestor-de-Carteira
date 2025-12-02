@@ -1,10 +1,7 @@
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  Outlet,
-} from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from '@/components/ui/toaster'
+import { Toaster as Sonner } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { ThemeProvider } from 'next-themes'
 import Dashboard from './pages/Dashboard'
@@ -22,19 +19,15 @@ import CrmClients from './pages/crm/CrmClients'
 import CrmKanban from './pages/crm/CrmKanban'
 import CrmAlerts from './pages/crm/CrmAlerts'
 import ClientDetails from './pages/crm/ClientDetails'
+import NotificationSettings from './pages/crm/NotificationSettings'
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth()
 
-  if (loading)
-    return (
-      <div className="flex h-screen items-center justify-center">
-        Carregando...
-      </div>
-    )
-  if (!session) return <Navigate to="/login" replace />
+  if (loading) return null
+  if (session) return <Navigate to="/" replace />
 
-  return <Layout />
+  return <>{children}</>
 }
 
 const App = () => (
@@ -74,6 +67,10 @@ const App = () => (
               <Route path="/crm/clients" element={<CrmClients />} />
               <Route path="/crm/kanban" element={<CrmKanban />} />
               <Route path="/crm/alerts" element={<CrmAlerts />} />
+              <Route
+                path="/crm/notifications"
+                element={<NotificationSettings />}
+              />
               <Route path="/crm/clients/:id" element={<ClientDetails />} />
             </Route>
             <Route path="*" element={<NotFound />} />

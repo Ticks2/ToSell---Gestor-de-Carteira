@@ -56,8 +56,6 @@ export const crmService = {
 
   // Alerts
   async getAlerts(userId: string) {
-    // Updated to fetch ALL alerts (both dismissed and active)
-    // This allows the UI to filter them and prevents recreation of dismissed automated alerts
     const { data, error } = await supabase
       .from('client_alerts')
       .select('*, client:clients(*)')
@@ -66,6 +64,27 @@ export const crmService = {
 
     if (error) throw error
     return data as ClientAlert[]
+  },
+
+  async getUniqueAlertTypes(userId: string) {
+    // Helper to get all distinct alert types used by the user
+    const { data, error } = await supabase
+      .from('client_alerts')
+      .select('alert_type')
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    // Extract unique types manually since .distinct() isn't a direct modifier in this context easily without query modifiers
+    const types = Array.from(new Set(data.map((item) => item.alert_type)))
+
+    // Ensure default types are always included if they haven't been used yet
+    const defaultTypes = ['birthday', 'post-sale', 'custom']
+    defaultTypes.forEach((t) => {
+      if (!types.includes(t)) types.push(t)
+    })
+
+    return types.sort()
   },
 
   async createAlert(alert: Partial<ClientAlert>) {
@@ -130,7 +149,7 @@ export const crmService = {
     const [clients, sales, existingAlerts] = await Promise.all([
       this.getClients(userId),
       salesService.getSales(userId),
-      this.getAlerts(userId), // Now fetches all, so we can check against dismissed ones too
+      this.getAlerts(userId),
     ])
 
     const alertsToCreate: Partial<ClientAlert>[] = []

@@ -12,6 +12,7 @@ import {
   Filter,
   X,
   CalendarIcon,
+  Settings,
 } from 'lucide-react'
 import {
   format,
@@ -117,6 +118,15 @@ export default function CrmAlerts() {
     <div className="flex flex-col h-full">
       <Header title="CRM - Alertas" />
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
+        <div className="flex justify-end">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/crm/notifications">
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações de Notificação
+            </Link>
+          </Button>
+        </div>
+
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -282,7 +292,9 @@ export default function CrmAlerts() {
                             ? 'Pós-Venda'
                             : alert.alert_type === 'birthday'
                               ? 'Aniversário'
-                              : 'Personalizado'}
+                              : alert.alert_type === 'custom'
+                                ? 'Personalizado'
+                                : alert.alert_type}
                         </h4>
                         {isDismissed && (
                           <Badge variant="outline" className="text-xs">

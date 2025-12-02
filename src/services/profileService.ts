@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabase/client'
 
+export interface NotificationSettings {
+  [key: string]: {
+    email: boolean
+  }
+}
+
 export interface Profile {
   id: string
   user_id: string
@@ -10,6 +16,7 @@ export interface Profile {
   role: 'individual' | 'manager' | 'seller'
   created_at: string
   monthly_commission_target: number
+  notification_settings?: NotificationSettings | null
 }
 
 export const profileService = {

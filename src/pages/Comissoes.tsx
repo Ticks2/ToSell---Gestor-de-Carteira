@@ -95,7 +95,7 @@ export default function Comissoes() {
     } finally {
       setLoading(false)
     }
-  }, [selectedMonth, selectedYear, viewMode, toast])
+  }, [selectedMonth, selectedYear, viewMode])
 
   useEffect(() => {
     loadData()
