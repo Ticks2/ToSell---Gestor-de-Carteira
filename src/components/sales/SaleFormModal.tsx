@@ -75,6 +75,45 @@ export function SaleFormModal({
   })
 
   useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (user) {
+          const data = await crmService.getClients(user.id)
+          setClients(data)
+        }
+      } catch (error) {
+        console.error('Error loading clients', error)
+      }
+    }
+
+    const loadSale = async (id: string) => {
+      setIsLoading(true)
+      try {
+        const sale = await salesService.getSale(id)
+        if (sale) {
+          form.reset({
+            clientId: sale.clientId || sale.client_id,
+            car: sale.car,
+            value: sale.value,
+            commission: sale.commission,
+            date: sale.date,
+            status: sale.status || 'pending',
+          })
+        }
+      } catch (error) {
+        toast({
+          title: 'Erro ao carregar venda',
+          variant: 'destructive',
+        })
+        onOpenChange(false)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     if (open) {
       loadClients()
       if (saleId) {
@@ -90,46 +129,7 @@ export function SaleFormModal({
         })
       }
     }
-  }, [open, saleId])
-
-  const loadClients = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
-        const data = await crmService.getClients(user.id)
-        setClients(data)
-      }
-    } catch (error) {
-      console.error('Error loading clients', error)
-    }
-  }
-
-  const loadSale = async (id: string) => {
-    setIsLoading(true)
-    try {
-      const sale = await salesService.getSale(id)
-      if (sale) {
-        form.reset({
-          clientId: sale.clientId || sale.client_id,
-          car: sale.car,
-          value: sale.value,
-          commission: sale.commission,
-          date: sale.date,
-          status: sale.status || 'pending',
-        })
-      }
-    } catch (error) {
-      toast({
-        title: 'Erro ao carregar venda',
-        variant: 'destructive',
-      })
-      onOpenChange(false)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [open, saleId, form, toast, onOpenChange])
 
   const onSubmit = async (values: SaleFormValues) => {
     setIsLoading(true)

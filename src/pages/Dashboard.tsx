@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Header } from '@/components/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DollarSign, TrendingUp, Target, ShoppingBag } from 'lucide-react'
@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [monthlyGoal, setMonthlyGoal] = useState(5000)
   const [progress, setProgress] = useState(0)
 
-  const selectedDate = new Date()
+  const selectedDate = useMemo(() => new Date(), [])
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -70,7 +70,7 @@ export default function Dashboard() {
     }
 
     loadDashboardData()
-  }, [user])
+  }, [user, selectedDate])
 
   return (
     <div className="flex flex-col h-full">

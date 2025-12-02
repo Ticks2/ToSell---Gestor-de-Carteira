@@ -31,28 +31,28 @@ export default function HistoricoImportacoes() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetchHistory()
-  }, [])
+    const fetchHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('import_history')
+          .select('*')
+          .order('created_at', { ascending: false })
 
-  const fetchHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('import_history')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setHistory(data || [])
-    } catch (error) {
-      console.error('Error fetching history:', error)
-      toast({
-        title: 'Erro ao carregar histórico',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoading(false)
+        if (error) throw error
+        setHistory(data || [])
+      } catch (error) {
+        console.error('Error fetching history:', error)
+        toast({
+          title: 'Erro ao carregar histórico',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
+
+    fetchHistory()
+  }, [toast])
 
   return (
     <div className="flex flex-col h-full">
