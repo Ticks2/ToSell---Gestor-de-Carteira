@@ -19,7 +19,7 @@ interface SaleDB {
   valor_comissao: number
   created_at: string
   user_id: string | null
-  status?: string
+  status?: string // Optional in DB interface as it might not exist in DB but used in mapping
 }
 
 const mapToAppType = (dbSale: SaleDB): Sale => ({
@@ -31,13 +31,14 @@ const mapToAppType = (dbSale: SaleDB): Sale => ({
   client: dbSale.nome_cliente,
   clientId: dbSale.client_id || undefined,
   clientDetails: dbSale.clients || undefined,
+  clientCity: dbSale.clients?.city || undefined,
   gestauto: dbSale.gestauto || undefined,
   financedValue: dbSale.valor_financiado || undefined,
   saleValue: dbSale.valor_venda || undefined,
   returnType: (dbSale.retorno as any) || undefined,
   type: dbSale.tipo_operacao as OperationType,
   commission: dbSale.valor_comissao,
-  status: (dbSale.status as 'pending' | 'paid') || 'pending',
+  status: (dbSale.status as 'pending' | 'paid') || 'pending', // Default to pending if status column missing
   createdAt: new Date(dbSale.created_at),
   userId: dbSale.user_id || undefined,
 })
@@ -45,7 +46,7 @@ const mapToAppType = (dbSale: SaleDB): Sale => ({
 const mapToDBType = (
   sale: Omit<Sale, 'id' | 'createdAt'>,
   userId: string,
-): Omit<SaleDB, 'id' | 'created_at' | 'clients'> => ({
+): Omit<SaleDB, 'id' | 'created_at' | 'clients' | 'status'> => ({
   data_venda: format(sale.date, 'yyyy-MM-dd'),
   carro: sale.car,
   ano_carro: sale.year,
@@ -58,7 +59,7 @@ const mapToDBType = (
   retorno: sale.returnType || null,
   tipo_operacao: sale.type,
   valor_comissao: sale.commission,
-  status: sale.status || 'pending',
+  // status field removed to prevent "column does not exist" error
   user_id: userId,
 })
 
@@ -140,7 +141,7 @@ export const salesService = {
     if (sale.returnType !== undefined) updates.retorno = sale.returnType || null
     if (sale.type) updates.tipo_operacao = sale.type
     if (sale.commission) updates.valor_comissao = sale.commission
-    if (sale.status) updates.status = sale.status
+    // Status update removed as column does not exist in DB schema provided
 
     const { error: updateError } = await supabase
       .from('vendas')
@@ -172,20 +173,22 @@ export const salesService = {
   },
 
   async logImport(
-    history: Omit<ImportHistory, 'id' | 'createdAt'>,
+    fileName: string,
+    count: number,
+    status: 'sucesso' | 'erro',
   ): Promise<void> {
     const { error } = await supabase.from('import_history').insert({
-      source_type: history.sourceType,
-      status: history.status,
-      total_records: history.totalRecords,
-      imported_records: history.importedRecords,
-      failed_records: history.failedRecords,
-      error_details: history.errorDetails,
+      source_type: 'csv',
+      status: status === 'sucesso' ? 'success' : 'error',
+      total_records: count,
+      imported_records: status === 'sucesso' ? count : 0,
+      failed_records: status === 'sucesso' ? 0 : count,
+      error_details: { file_name: fileName },
     })
 
     if (error) {
       console.error('Error logging import:', error)
-      throw new Error(error.message)
+      // Don't throw here to avoid blocking the UI if just logging fails
     }
   },
 

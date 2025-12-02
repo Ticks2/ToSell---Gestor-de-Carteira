@@ -33,8 +33,9 @@ import {
   Bell,
   Users,
   Pencil,
+  DollarSign,
 } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
@@ -54,6 +55,7 @@ export default function ClientDetails() {
     addInteraction,
     setClientStatus,
     createAlert,
+    isLoading,
   } = useCrmStore()
   const { toast } = useToast()
 
@@ -153,7 +155,24 @@ export default function ClientDetails() {
     setIsSaleModalOpen(true)
   }
 
-  if (!currentClient) return <div className="p-8">Carregando...</div>
+  const formatDateSafe = (date: any) => {
+    if (!date) return 'Data inválida'
+    const d = new Date(date)
+    if (!isValid(d)) return 'Data inválida'
+    return format(d, 'dd/MM/yyyy')
+  }
+
+  if (isLoading) return <div className="p-8 text-center">Carregando...</div>
+
+  if (!currentClient)
+    return (
+      <div className="p-8 text-center">
+        <p className="mb-4">Cliente não encontrado ou erro ao carregar.</p>
+        <Button asChild>
+          <Link to="/crm/clients">Voltar</Link>
+        </Button>
+      </div>
+    )
 
   return (
     <div className="flex flex-col h-full">
@@ -204,7 +223,10 @@ export default function ClientDetails() {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
+                  <span
+                    className="text-sm truncate"
+                    title={currentClient.email || ''}
+                  >
                     {currentClient.email || 'Sem email'}
                   </span>
                 </div>
@@ -224,7 +246,7 @@ export default function ClientDetails() {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
                     {currentClient.birth_date
-                      ? format(new Date(currentClient.birth_date), 'dd/MM/yyyy')
+                      ? formatDateSafe(currentClient.birth_date)
                       : 'Data de nasc. não informada'}
                   </span>
                 </div>
@@ -238,7 +260,9 @@ export default function ClientDetails() {
                         : 'secondary'
                     }
                   >
-                    {currentClient.status.toUpperCase()}
+                    {currentClient.status
+                      ? currentClient.status.toUpperCase()
+                      : 'DESCONHECIDO'}
                   </Badge>
                 </div>
               </CardContent>
@@ -421,7 +445,7 @@ export default function ClientDetails() {
                     <CardTitle>Vendas Realizadas</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {clientSales.length > 0 ? (
+                    {clientSales && clientSales.length > 0 ? (
                       <div className="space-y-4">
                         {clientSales.map((sale) => (
                           <div
@@ -442,7 +466,7 @@ export default function ClientDetails() {
                             <div className="flex items-center gap-4">
                               <div className="text-right">
                                 <p className="font-bold">
-                                  {sale.saleValue
+                                  {sale.saleValue !== undefined
                                     ? sale.saleValue.toLocaleString('pt-BR', {
                                         style: 'currency',
                                         currency: 'BRL',
@@ -450,7 +474,7 @@ export default function ClientDetails() {
                                     : '-'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(sale.date), 'dd/MM/yyyy')}
+                                  {formatDateSafe(sale.date)}
                                 </p>
                               </div>
                               <Button
@@ -481,7 +505,7 @@ export default function ClientDetails() {
                   <CardContent className="flex-1 p-0 overflow-hidden">
                     <ScrollArea className="h-full p-6">
                       <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
-                        {interactions.length > 0 ? (
+                        {interactions && interactions.length > 0 ? (
                           interactions.map((interaction) => (
                             <div
                               key={interaction.id}
