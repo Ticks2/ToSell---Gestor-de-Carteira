@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { getMonth, getYear } from 'date-fns'
+import { getMonth, getYear, isAfter, startOfMonth } from 'date-fns'
 import { Save } from 'lucide-react'
 import { CommissionData } from '@/types'
 
@@ -20,10 +20,12 @@ export default function Comissoes() {
     monthlyGoal,
     updateMonthlyGoal,
   } = useAppStore()
+
   const { sales: monthlySales, commissionData } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
   )
+
   const [goalInput, setGoalInput] = useState(monthlyGoal.toString())
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function Comissoes() {
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
     (commissionData.extras || 0) +
-    (commissionData.salary ?? 0)
+    (commissionData.salary || 1991)
 
   const handleInputChange = (field: keyof CommissionData, value: string) => {
     updateCommission(getYear(selectedDate), getMonth(selectedDate), {
@@ -61,12 +63,27 @@ export default function Comissoes() {
     updateMonthlyGoal(Number(goalInput))
   }
 
+  // Logic to check for future date
+  const isFuture = isAfter(startOfMonth(selectedDate), startOfMonth(new Date()))
+
   // Helper to decide input value display
-  const getInputValue = (value: number | null | undefined, field: string) => {
-    const val = value ?? 0
-    // For all fields, keep 0 hidden (placeholder shows)
-    if (val === 0) return ''
-    return val
+  const getInputValue = (value: number, field: string) => {
+    // Ensure ID exists (not a placeholder) to check strict persistence if needed,
+    // but checking strict persistence is tricky with optimistic UI.
+    // We rely on the fact that if commissionData.id is present (and not empty), it's persisted.
+    // But getMonthlyData returns a placeholder object with empty ID if not found.
+
+    const isPersisted = !!commissionData.id
+
+    if (isFuture && !isPersisted) {
+      // Default to empty for non-persisted future data
+      if (field === 'salary' && value === 1991) return ''
+      if (value === 0) return ''
+    }
+
+    // Existing logic for current/past or persisted data
+    if (value === 0) return ''
+    return value
   }
 
   return (

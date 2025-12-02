@@ -120,14 +120,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     async (year: number, month: number, data: Partial<CommissionData>) => {
       if (!user) return
 
-      // Default salary is 0
-      const defaultSalary = 0
-
-      // Check if entry exists before optimistic update changes state
-      const existing = commissions.find(
-        (c) => c.year === year && c.month === month,
-      )
-
       // Optimistic update
       setCommissions((prev) => {
         const existingIndex = prev.findIndex(
@@ -141,6 +133,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           return [
             ...prev,
             {
+              id: 'temp-optimistic', // Temporary ID for optimistic update
+              user_id: user.id,
               year,
               month,
               bonus: 0,
@@ -148,7 +142,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               transfers: 0,
               surplus: 0,
               extras: 0,
-              salary: defaultSalary,
+              salary: 1991,
+              created_at: new Date().toISOString(),
               ...data,
             },
           ]
@@ -156,19 +151,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       })
 
       try {
-        const payload = {
+        await commissionService.upsertCommission(user.id, {
           year,
           month,
           ...data,
-        } as any
-
-        // If creating a new entry (not existing in state) and salary is not provided in update data,
-        // we inject the default salary to ensure it overrides DB default if needed.
-        if (!existing && payload.salary === undefined) {
-          payload.salary = defaultSalary
-        }
-
-        await commissionService.upsertCommission(user.id, payload)
+        })
       } catch (error) {
         console.error('Error updating commission:', error)
         toast({
@@ -176,9 +163,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           description: 'Suas alterações podem não ter sido salvas.',
           variant: 'destructive',
         })
+        refreshSales() // Revert optimistic update on error
       }
     },
-    [user, toast, commissions],
+    [user, toast, refreshSales],
   )
 
   const updateMonthlyGoal = useCallback(
@@ -205,12 +193,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const monthlySales = sales.filter((s) => isSameMonth(s.date, date))
 
-      // Default salary is 0
-      const defaultSalary = 0
-
       const commission = commissions.find(
         (c) => c.year === year && c.month === month,
       ) || {
+        id: '', // Empty ID for new commission data placeholder
+        user_id: user?.id || '',
+        created_at: new Date().toISOString(),
         year,
         month,
         bonus: 0,
@@ -218,7 +206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         transfers: 0,
         surplus: 0,
         extras: 0,
-        salary: defaultSalary,
+        salary: 1991,
       }
 
       return {
@@ -226,7 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         commissionData: commission,
       }
     },
-    [sales, commissions],
+    [sales, commissions, user],
   )
 
   const value = useMemo(
