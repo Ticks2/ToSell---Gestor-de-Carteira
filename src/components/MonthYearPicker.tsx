@@ -134,7 +134,12 @@ export function MonthYearPicker({
   const showYearPicker = viewMode === 'yearly' || internalMode === 'year'
 
   return (
-    <div className="flex items-center gap-2 bg-card p-1 rounded-lg border shadow-sm flex-wrap sm:flex-nowrap">
+    <div
+      className={cn(
+        'flex items-center gap-2 flex-wrap sm:flex-nowrap',
+        onViewModeChange && 'bg-card p-1 rounded-lg border shadow-sm',
+      )}
+    >
       {onViewModeChange && (
         <Tabs
           value={viewMode}
@@ -152,7 +157,7 @@ export function MonthYearPicker({
         </Tabs>
       )}
 
-      <div className="flex items-center gap-1 bg-background border rounded-md p-0.5 shadow-sm ml-auto sm:ml-0">
+      <div className="flex items-center gap-1 bg-background border border-input rounded-md p-0.5 ml-auto sm:ml-0">
         <Button
           variant="ghost"
           size="icon"
