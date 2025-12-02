@@ -50,6 +50,7 @@ interface SaleFormModalProps {
   onOpenChange: (open: boolean) => void
   saleId?: string | null
   onSuccess: () => void
+  fixedClientId?: string
 }
 
 export function SaleFormModal({
@@ -57,6 +58,7 @@ export function SaleFormModal({
   onOpenChange,
   saleId,
   onSuccess,
+  fixedClientId,
 }: SaleFormModalProps) {
   const { toast } = useToast()
   const [clients, setClients] = useState<Client[]>([])
@@ -65,7 +67,7 @@ export function SaleFormModal({
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
-      clientId: '',
+      clientId: fixedClientId || '',
       car: '',
       value: 0,
       commission: 0,
@@ -120,7 +122,7 @@ export function SaleFormModal({
         loadSale(saleId)
       } else {
         form.reset({
-          clientId: '',
+          clientId: fixedClientId || '',
           car: '',
           value: 0,
           commission: 0,
@@ -129,7 +131,7 @@ export function SaleFormModal({
         })
       }
     }
-  }, [open, saleId, form, toast, onOpenChange])
+  }, [open, saleId, fixedClientId, form, toast, onOpenChange])
 
   const onSubmit = async (values: SaleFormValues) => {
     setIsLoading(true)
@@ -139,8 +141,17 @@ export function SaleFormModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // If fixedClientId is present, ensure it is used (though form should have it)
+      const finalClientId = fixedClientId || values.clientId
+
+      // Find client name to ensure we update nome_cliente correctly
+      const selectedClient = clients.find((c) => c.id === finalClientId)
+      const clientName = selectedClient ? selectedClient.full_name : undefined
+
       const saleData = {
         ...values,
+        clientId: finalClientId,
+        client: clientName, // Explicitly pass client name for updating `nome_cliente`
         userId: user.id,
       }
 
@@ -187,6 +198,7 @@ export function SaleFormModal({
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                     value={field.value}
+                    disabled={!!fixedClientId}
                   >
                     <FormControl>
                       <SelectTrigger>

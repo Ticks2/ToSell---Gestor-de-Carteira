@@ -32,12 +32,15 @@ import {
   Plus,
   Bell,
   Users,
+  Pencil,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ClientFormModal } from '@/components/crm/ClientFormModal'
+import { SaleFormModal } from '@/components/sales/SaleFormModal'
 
 export default function ClientDetails() {
   const { id } = useParams<{ id: string }>()
@@ -54,6 +57,9 @@ export default function ClientDetails() {
 
   const [isInteractionOpen, setIsInteractionOpen] = useState(false)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false)
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
 
   // Interaction Form State
   const [newInteraction, setNewInteraction] = useState({
@@ -130,6 +136,11 @@ export default function ClientDetails() {
     }
   }
 
+  const handleEditSale = (saleId: string) => {
+    setEditingSaleId(saleId)
+    setIsSaleModalOpen(true)
+  }
+
   if (!currentClient) return <div className="p-8">Carregando...</div>
 
   return (
@@ -143,7 +154,7 @@ export default function ClientDetails() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">
+            <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               {currentClient.full_name}
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -151,6 +162,13 @@ export default function ClientDetails() {
             </p>
           </div>
           <div className="ml-auto flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsClientModalOpen(true)}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar Cliente
+            </Button>
             <Button
               variant={
                 currentClient.status === 'lead' ? 'secondary' : 'default'
@@ -401,18 +419,27 @@ export default function ClientDetails() {
                                 {sale.plate || 'S/ Placa'}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="font-bold">
-                                {sale.saleValue
-                                  ? sale.saleValue.toLocaleString('pt-BR', {
-                                      style: 'currency',
-                                      currency: 'BRL',
-                                    })
-                                  : '-'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(sale.date, 'dd/MM/yyyy')}
-                              </p>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <p className="font-bold">
+                                  {sale.saleValue
+                                    ? sale.saleValue.toLocaleString('pt-BR', {
+                                        style: 'currency',
+                                        currency: 'BRL',
+                                      })
+                                    : '-'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(sale.date), 'dd/MM/yyyy')}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditSale(sale.id!)}
+                              >
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -505,6 +532,21 @@ export default function ClientDetails() {
           </div>
         </div>
       </div>
+
+      <ClientFormModal
+        open={isClientModalOpen}
+        onOpenChange={setIsClientModalOpen}
+        initialData={currentClient}
+        onSuccess={() => id && fetchClientDetails(id)}
+      />
+
+      <SaleFormModal
+        open={isSaleModalOpen}
+        onOpenChange={setIsSaleModalOpen}
+        saleId={editingSaleId}
+        fixedClientId={currentClient.id}
+        onSuccess={() => id && fetchClientDetails(id)}
+      />
     </div>
   )
 }
