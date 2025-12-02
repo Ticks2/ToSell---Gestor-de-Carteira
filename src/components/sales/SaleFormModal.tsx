@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { format, parseISO } from 'date-fns'
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
@@ -29,215 +27,145 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import {
-  Check,
-  ChevronsUpDown,
-  Loader2,
-  Car,
-  DollarSign,
-  User,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-
 import { salesService } from '@/services/salesService'
-import { clientService } from '@/services/clientService'
 import { useToast } from '@/hooks/use-toast'
-import { Client, Sale } from '@/types'
+import { Loader2 } from 'lucide-react'
+import { parseISO, format } from 'date-fns'
 import { supabase } from '@/lib/supabase/client'
 
-const saleSchema = z
-  .object({
-    // Vehicle Data
-    car: z.string().min(1, 'Modelo do veículo é obrigatório'),
-    year: z.coerce
-      .number()
-      .min(1900, 'Ano inválido')
-      .max(new Date().getFullYear() + 1, 'Ano inválido'),
-    plate: z.string().optional(),
-    type: z.enum(['Venda', 'Compra']).default('Venda'),
-
-    // Financial Data
-    saleValue: z.coerce.number().min(0.01, 'Valor da venda é obrigatório'),
-    financedValue: z.coerce.number().optional(),
-    commission: z.coerce.number().min(0, 'Comissão não pode ser negativa'),
-    returnType: z.string().optional(),
-    gestauto: z.boolean().default(false),
-    date: z.string().refine((val) => !isNaN(Date.parse(val)), 'Data inválida'),
-    status: z.enum(['pending', 'paid']).default('pending'),
-
-    // Client Data
-    clientMode: z.enum(['existing', 'new']).default('existing'),
-    clientId: z.string().optional(),
-
-    // New Client Fields
-    newClientName: z.string().optional(),
-    newClientBirthDate: z.string().optional(),
-    newClientCity: z.string().optional(),
-    newClientPhone: z.string().optional(),
-    newClientEmail: z
-      .string()
-      .email('Email inválido')
-      .optional()
-      .or(z.literal('')),
-  })
-  .superRefine((data, ctx) => {
-    if (data.clientMode === 'existing') {
-      if (!data.clientId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Selecione um cliente existente',
-          path: ['clientId'],
-        })
-      }
-    } else {
-      if (!data.newClientName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Nome do cliente é obrigatório',
-          path: ['newClientName'],
-        })
-      }
-    }
-  })
+const saleSchema = z.object({
+  client: z.string().min(1, 'Nome do cliente é obrigatório'),
+  car: z.string().min(1, 'Veículo é obrigatório'),
+  year: z.coerce.number().min(1900, 'Ano inválido').max(2100, 'Ano inválido'),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), 'Data inválida'),
+  type: z.string().min(1, 'Tipo de operação é obrigatório'),
+  commission: z.coerce.number(),
+  plate: z.string().optional(),
+  gestauto: z.string().optional(),
+  returnType: z.string().optional(),
+  financedValue: z.coerce.number().optional(),
+  saleValue: z.coerce.number().optional(),
+  // Hidden/Internal fields
+  clientId: z.string().optional(),
+  status: z.enum(['pending', 'paid']).default('pending'),
+})
 
 type SaleFormValues = z.infer<typeof saleSchema>
 
 interface SaleFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: () => void
-  saleToEdit?: Sale
+  saleId?: string | null
+  onSuccess: () => void
   fixedClientId?: string
+  initialData?: any // Added to support direct data passing if needed
 }
 
 export function SaleFormModal({
   open,
   onOpenChange,
+  saleId,
   onSuccess,
-  saleToEdit,
   fixedClientId,
+  initialData,
 }: SaleFormModalProps) {
   const { toast } = useToast()
-  const [clients, setClients] = useState<Client[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-  const [isClientSelectOpen, setIsClientSelectOpen] = useState(false)
 
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
+      client: '',
       car: '',
       year: new Date().getFullYear(),
-      plate: '',
-      type: 'Venda',
-      saleValue: 0,
-      financedValue: 0,
-      commission: 0,
-      returnType: '',
-      gestauto: false,
       date: new Date().toISOString().split('T')[0],
+      type: 'Venda',
+      commission: 0,
+      plate: '',
+      gestauto: '',
+      returnType: '',
+      financedValue: 0,
+      saleValue: 0,
+      clientId: fixedClientId || '',
       status: 'pending',
-      clientMode: 'existing',
-      clientId: '',
-      newClientName: '',
-      newClientBirthDate: '',
-      newClientCity: '',
-      newClientPhone: '',
-      newClientEmail: '',
     },
   })
 
   useEffect(() => {
-    const loadClients = async () => {
+    const loadSale = async (id: string) => {
+      setIsLoading(true)
       try {
-        const data = await clientService.getClients()
-        setClients(data)
+        const sale = await salesService.getSale(id)
+        if (sale) {
+          form.reset({
+            client: sale.client,
+            car: sale.car,
+            year: sale.year || new Date().getFullYear(),
+            date: format(sale.date, 'yyyy-MM-dd'),
+            type: sale.type,
+            commission: sale.commission,
+            plate: sale.plate || '',
+            gestauto: sale.gestauto || '',
+            returnType: sale.returnType || '',
+            financedValue: sale.financedValue || 0,
+            saleValue: sale.saleValue || 0,
+            clientId: sale.clientId || '',
+            status: sale.status || 'pending',
+          })
+        }
       } catch (error) {
-        console.error('Error loading clients', error)
+        toast({
+          title: 'Erro ao carregar venda',
+          variant: 'destructive',
+        })
+        onOpenChange(false)
+      } finally {
+        setIsLoading(false)
       }
     }
 
     if (open) {
-      loadClients()
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (open) {
-      if (saleToEdit) {
+      if (saleId) {
+        loadSale(saleId)
+      } else if (initialData) {
+        // If initialData is passed (e.g. from client details or edit button)
         form.reset({
-          car: saleToEdit.car,
-          year: saleToEdit.year,
-          plate: saleToEdit.plate || '',
-          type: saleToEdit.type,
-          saleValue: saleToEdit.saleValue || 0,
-          financedValue: saleToEdit.financedValue || 0,
-          commission: saleToEdit.commission,
-          returnType: saleToEdit.returnType || '',
-          gestauto: saleToEdit.gestauto,
-          date: format(saleToEdit.date, 'yyyy-MM-dd'),
-          status: saleToEdit.status || 'pending',
-          clientMode: 'existing',
-          clientId: saleToEdit.clientId || '',
+          client: initialData.client || initialData.full_name || '', // Handle Client object or Sale object
+          car: initialData.car || '',
+          year: initialData.year || new Date().getFullYear(),
+          date: initialData.date
+            ? format(new Date(initialData.date), 'yyyy-MM-dd')
+            : new Date().toISOString().split('T')[0],
+          type: initialData.type || 'Venda',
+          commission: initialData.commission || 0,
+          plate: initialData.plate || '',
+          gestauto: initialData.gestauto || '',
+          returnType: initialData.returnType || '',
+          financedValue: initialData.financedValue || 0,
+          saleValue: initialData.saleValue || 0,
+          clientId: initialData.clientId || initialData.id || '', // If it's a client object, id is clientId
+          status: initialData.status || 'pending',
         })
-
-        // Find and set selected client for display
-        if (saleToEdit.clientId) {
-          // We need to wait for clients to load or use clientDetails if available
-          if (saleToEdit.clientDetails) {
-            setSelectedClient(saleToEdit.clientDetails)
-          } else {
-            // Fallback will happen when clients list is loaded and we match ID
-            const client = clients.find((c) => c.id === saleToEdit.clientId)
-            if (client) setSelectedClient(client)
-          }
-        }
       } else {
+        // Reset for new entry
         form.reset({
+          client: '',
           car: '',
           year: new Date().getFullYear(),
-          plate: '',
-          type: 'Venda',
-          saleValue: 0,
-          financedValue: 0,
-          commission: 0,
-          returnType: '',
-          gestauto: false,
           date: new Date().toISOString().split('T')[0],
-          status: 'pending',
-          clientMode: fixedClientId ? 'existing' : 'existing',
+          type: 'Venda',
+          commission: 0,
+          plate: '',
+          gestauto: '',
+          returnType: '',
+          financedValue: 0,
+          saleValue: 0,
           clientId: fixedClientId || '',
-          newClientName: '',
-          newClientBirthDate: '',
-          newClientCity: '',
-          newClientPhone: '',
-          newClientEmail: '',
+          status: 'pending',
         })
-        if (fixedClientId) {
-          const client = clients.find((c) => c.id === fixedClientId)
-          if (client) setSelectedClient(client)
-        } else {
-          setSelectedClient(null)
-        }
       }
     }
-  }, [open, saleToEdit, fixedClientId, form, clients])
+  }, [open, saleId, fixedClientId, initialData, form, toast, onOpenChange])
 
   const onSubmit = async (values: SaleFormValues) => {
     setIsLoading(true)
@@ -247,55 +175,21 @@ export function SaleFormModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      let finalClientId = values.clientId
-      let finalClientName = ''
-
-      if (values.clientMode === 'new') {
-        // Create new client
-        const newClientData = {
-          full_name: values.newClientName!,
-          birth_date: values.newClientBirthDate || null,
-          city: values.newClientCity || null,
-          phone: values.newClientPhone || null,
-          email: values.newClientEmail || null,
-          status: 'client' as const,
-        }
-        const createdClient = await clientService.createClient(newClientData)
-        finalClientId = createdClient.id
-        finalClientName = createdClient.full_name
-      } else {
-        // Existing client
-        const client = clients.find((c) => c.id === values.clientId)
-        if (client) {
-          finalClientName = client.full_name
-        }
-      }
-
       const saleData = {
+        ...values,
         date: parseISO(values.date),
-        car: values.car,
-        year: values.year,
-        plate: values.plate,
-        client: finalClientName,
-        clientId: finalClientId,
-        saleValue: values.saleValue,
-        financedValue: values.financedValue,
-        commission: values.commission,
-        returnType: values.returnType,
-        gestauto: values.gestauto,
-        type: values.type,
-        status: values.status,
+        userId: user.id,
       }
 
-      if (saleToEdit) {
-        await salesService.updateSale(saleToEdit.id, saleData)
+      if (saleId) {
+        await salesService.updateSale(saleId, saleData)
         toast({ title: 'Venda atualizada com sucesso' })
       } else {
         await salesService.createSale(saleData)
         toast({ title: 'Venda criada com sucesso' })
       }
 
-      if (onSuccess) onSuccess()
+      onSuccess()
       onOpenChange(false)
     } catch (error) {
       console.error(error)
@@ -310,432 +204,225 @@ export function SaleFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {saleToEdit ? 'Editar Operação' : 'Nova Operação'}
-          </DialogTitle>
+          <DialogTitle>{saleId ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
           <DialogDescription>
             Preencha os dados da operação abaixo.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Section 1: Vehicle Data */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary font-semibold">
-                <Car className="h-5 w-5" />
-                <h3>Dados do Veículo</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="car"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Modelo do Veículo *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex: Honda Civic Touring"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="year"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ano Modelo *</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="plate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Placa</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="ABC-1234"
-                          {...field}
-                          className="uppercase"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Tipo de Operação</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Venda">Venda</SelectItem>
-                          <SelectItem value="Compra">Compra</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Row 1: Nome do Cliente */}
+            <FormField
+              control={form.control}
+              name="client"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome do Cliente</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome completo do cliente" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Row 2: Carro, Ano */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="car"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Carro</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Modelo do veículo" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ano do Carro</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 2024" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <Separator />
-
-            {/* Section 2: Financial Details */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary font-semibold">
-                <DollarSign className="h-5 w-5" />
-                <h3>Detalhes Financeiros</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="saleValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor da Venda (R$) *</FormLabel>
+            {/* Row 3: Data, Tipo */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data da Venda</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Operação</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="financedValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor Financiado (R$)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="commission"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Comissão (R$)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="returnType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Retorno / Banco</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Santander" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data da Operação</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="gestauto"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Gestauto</FormLabel>
-                        <FormDescription>
-                          Veículo possui garantia Gestauto?
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      <SelectContent>
+                        <SelectItem value="Venda">Venda</SelectItem>
+                        <SelectItem value="Compra">Compra</SelectItem>
+                        <SelectItem value="Troca">Troca</SelectItem>
+                        <SelectItem value="Financiamento">
+                          Financiamento
+                        </SelectItem>
+                        <SelectItem value="Consignação">Consignação</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <Separator />
-
-            {/* Section 3: Client Data */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary font-semibold">
-                <User className="h-5 w-5" />
-                <h3>Dados do Cliente</h3>
-              </div>
-
-              <Tabs
-                defaultValue={form.watch('clientMode')}
-                onValueChange={(v) =>
-                  form.setValue('clientMode', v as 'existing' | 'new')
-                }
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="existing" disabled={!!fixedClientId}>
-                    Buscar Cliente Existente
-                  </TabsTrigger>
-                  <TabsTrigger value="new" disabled={!!fixedClientId}>
-                    Novo Cliente
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="existing" className="space-y-4 mt-4">
-                  <FormField
-                    control={form.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Selecionar Cliente *</FormLabel>
-                        <Popover
-                          open={isClientSelectOpen}
-                          onOpenChange={setIsClientSelectOpen}
-                        >
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                disabled={!!fixedClientId}
-                                className={cn(
-                                  'w-full justify-between',
-                                  !field.value && 'text-muted-foreground',
-                                )}
-                              >
-                                {field.value
-                                  ? clients.find(
-                                      (client) => client.id === field.value,
-                                    )?.full_name
-                                  : 'Buscar cliente...'}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0">
-                            <Command>
-                              <CommandInput placeholder="Buscar cliente..." />
-                              <CommandList>
-                                <CommandEmpty>
-                                  Nenhum cliente encontrado.
-                                </CommandEmpty>
-                                <CommandGroup>
-                                  {clients.map((client) => (
-                                    <CommandItem
-                                      value={client.full_name}
-                                      key={client.id}
-                                      onSelect={() => {
-                                        form.setValue('clientId', client.id)
-                                        setSelectedClient(client)
-                                        setIsClientSelectOpen(false)
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          'mr-2 h-4 w-4',
-                                          client.id === field.value
-                                            ? 'opacity-100'
-                                            : 'opacity-0',
-                                        )}
-                                      />
-                                      <div className="flex flex-col">
-                                        <span>{client.full_name}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                          {client.email}
-                                        </span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {selectedClient && (
-                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-2 text-sm">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="font-medium text-muted-foreground">
-                            Nome:
-                          </span>
-                          <p>{selectedClient.full_name}</p>
-                        </div>
-                        <div>
-                          <span className="font-medium text-muted-foreground">
-                            Data Nasc.:
-                          </span>
-                          <p>
-                            {selectedClient.birth_date
-                              ? format(
-                                  parseISO(selectedClient.birth_date),
-                                  'dd/MM/yyyy',
-                                )
-                              : '-'}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="font-medium text-muted-foreground">
-                            Cidade:
-                          </span>
-                          <p>{selectedClient.city || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="font-medium text-muted-foreground">
-                            Telefone:
-                          </span>
-                          <p>{selectedClient.phone || '-'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="font-medium text-muted-foreground">
-                            Email:
-                          </span>
-                          <p>{selectedClient.email || '-'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="new" className="space-y-4 mt-4">
-                  <FormField
-                    control={form.control}
-                    name="newClientName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome Completo *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome do Cliente" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="newClientBirthDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Nascimento</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+            {/* Row 4: Valor Comissão */}
+            <FormField
+              control={form.control}
+              name="commission"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Valor da Comissão (R$)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
                     />
-                    <FormField
-                      control={form.control}
-                      name="newClientPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(00) 00000-0000" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="newClientCity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cidade</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Cidade" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="newClientEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>E-mail</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="email@exemplo.com"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Row 5: Placa, Gestauto */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="plate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Placa (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="ABC-1234"
+                        {...field}
+                        className="uppercase"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gestauto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gestauto (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Informação Gestauto" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <DialogFooter>
+            {/* Row 6: Retorno */}
+            <FormField
+              control={form.control}
+              name="returnType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Retorno (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Informação de Retorno" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Row 7: Valor Financiado, Valor Venda */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="financedValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor Financiado (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="saleValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor da Venda (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="mt-6">
               <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
+                type="submit"
+                disabled={isLoading}
+                className="w-full sm:w-auto"
               >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Operação
+                Salvar
               </Button>
             </DialogFooter>
           </form>

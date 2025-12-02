@@ -22,27 +22,16 @@ interface SaleDB {
   status?: string
 }
 
-interface ImportHistoryDB {
-  id: string
-  created_at: string
-  source_type: string
-  status: string
-  total_records: number
-  imported_records: number
-  failed_records: number
-  error_details: any
-}
-
 const mapToAppType = (dbSale: SaleDB): Sale => ({
   id: dbSale.id,
   date: parseISO(dbSale.data_venda),
   car: dbSale.carro,
   year: dbSale.ano_carro,
   plate: dbSale.placa || undefined,
-  client: dbSale.clients?.full_name || dbSale.nome_cliente,
+  client: dbSale.nome_cliente, // Always use stored name, or fallback to dbSale.clients?.full_name if empty? usually nome_cliente has the snapshot
   clientId: dbSale.client_id || undefined,
   clientDetails: dbSale.clients || undefined,
-  gestauto: dbSale.gestauto === 'Sim',
+  gestauto: dbSale.gestauto || undefined, // Map string directly
   financedValue: dbSale.valor_financiado || undefined,
   saleValue: dbSale.valor_venda || undefined,
   returnType: (dbSale.retorno as any) || undefined,
@@ -62,7 +51,7 @@ const mapToDBType = (
   placa: sale.plate || null,
   nome_cliente: sale.client,
   client_id: sale.clientId || null,
-  gestauto: sale.gestauto ? 'Sim' : 'Não',
+  gestauto: sale.gestauto || null, // Map string directly
   valor_financiado: sale.financedValue || null,
   valor_venda: sale.saleValue || null,
   retorno: sale.returnType || null,
@@ -142,8 +131,7 @@ export const salesService = {
     if (sale.client) updates.nome_cliente = sale.client
     if (sale.clientId !== undefined) updates.client_id = sale.clientId
 
-    if (sale.gestauto !== undefined)
-      updates.gestauto = sale.gestauto ? 'Sim' : 'Não'
+    if (sale.gestauto !== undefined) updates.gestauto = sale.gestauto || null
     if (sale.financedValue !== undefined)
       updates.valor_financiado = sale.financedValue || null
     if (sale.saleValue !== undefined)
@@ -221,5 +209,32 @@ export const salesService = {
       failedRecords: item.failed_records,
       errorDetails: item.error_details || [],
     }))
+  },
+
+  async uploadSales(sales: any[]) {
+    // Map imported sales to DB format, treating missing commissions as 0
+    const dbSales = sales.map((s) => {
+      // Find if we can map client name to existing ID?
+      // For bulk import we usually don't do heavy lookups here for performance, just raw data.
+      return {
+        data_venda: s.data_venda,
+        carro: s.carro,
+        ano_carro: s.ano_carro,
+        placa: s.placa,
+        nome_cliente: s.nome_cliente,
+        gestauto: s.gestauto,
+        valor_financiado: s.valor_financiado,
+        valor_venda: s.valor_venda || 0, // Fallback if missing
+        retorno: s.retorno,
+        tipo_operacao: s.tipo_operacao,
+        valor_comissao: s.valor_comissao,
+      }
+    })
+
+    const { error } = await supabase.rpc('replace_vendas', {
+      p_vendas: dbSales,
+    })
+
+    if (error) throw error
   },
 }
