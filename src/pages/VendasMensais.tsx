@@ -148,7 +148,7 @@ export default function VendasMensais() {
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
+            <MonthYearPicker date={selectedDate} setDate={setSelectedDate} />
             <span className="text-sm text-muted-foreground ml-2 hidden md:inline-block border-l pl-3 h-6 leading-6">
               {filteredSales.length} registros
             </span>
