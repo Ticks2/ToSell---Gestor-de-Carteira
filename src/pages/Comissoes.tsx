@@ -51,7 +51,7 @@ export default function Comissoes() {
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
     (commissionData.extras || 0) +
-    (commissionData.salary || 1991)
+    (commissionData.salary || 0)
 
   const handleInputChange = (field: keyof CommissionData, value: string) => {
     updateCommission(getYear(selectedDate), getMonth(selectedDate), {
@@ -77,7 +77,6 @@ export default function Comissoes() {
 
     if (isFuture && !isPersisted) {
       // Default to empty for non-persisted future data
-      if (field === 'salary' && value === 1991) return ''
       if (value === 0) return ''
     }
 

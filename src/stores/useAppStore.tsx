@@ -142,7 +142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               transfers: 0,
               surplus: 0,
               extras: 0,
-              salary: 1991,
+              salary: 0,
               created_at: new Date().toISOString(),
               ...data,
             },
@@ -206,7 +206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         transfers: 0,
         surplus: 0,
         extras: 0,
-        salary: 1991,
+        salary: 0,
       }
 
       return {
