@@ -10,10 +10,9 @@ import { getYear, getMonth, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SalesSummary } from '@/types'
 
 export default function Relatorios() {
-  const { sales, commissions, refreshSales } = useAppStore()
+  const { sales, commissions, refreshSales, monthlyGoal } = useAppStore()
   const [selectedYear, setSelectedYear] = useState<number>(
     new Date().getFullYear(),
   )
@@ -43,7 +42,7 @@ export default function Relatorios() {
     return Array.from(years).sort((a, b) => b - a)
   }, [sales])
 
-  // KPI Calculations
+  // Enhanced KPI Calculations including Operation Type and Target
   const kpis = useMemo(() => {
     const totalRevenue = filteredSales.reduce(
       (acc, s) => acc + (s.saleValue || 0),
@@ -55,7 +54,25 @@ export default function Relatorios() {
     )
     const totalSalesCount = filteredSales.length
 
-    // Top Car
+    // Internal Calculation: Sales by Operation Type
+    const salesByOperation = filteredSales.reduce(
+      (acc, s) => {
+        const type = s.type || 'Venda'
+        acc[type] = (acc[type] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    // Internal Calculation: Commission vs Target
+    // Note: Target is monthly, if 'all' is selected we might want to sum targets,
+    // but for simplicity we pass the reference monthly target for comparison or
+    // calculate an annualized target if needed.
+    // For this scope, passing the raw values for potential internal analysis.
+    const percentageOfGoal =
+      monthlyGoal > 0 ? (totalCommission / monthlyGoal) * 100 : 0
+
+    // Top Car Logic
     const carCounts: Record<string, number> = {}
     filteredSales.forEach((s) => {
       carCounts[s.car] = (carCounts[s.car] || 0) + 1
@@ -67,17 +84,15 @@ export default function Relatorios() {
       totalCommission,
       totalSalesCount,
       topCar,
+      // Enhanced Data Properties (passed to component logic)
+      salesByOperation,
+      monthlyGoal,
+      percentageOfGoal,
     }
-  }, [filteredSales])
+  }, [filteredSales, monthlyGoal])
 
   // Chart Data Preparation
   const revenueData = useMemo(() => {
-    // If filtering by specific month, show daily breakdown? Or just weekly?
-    // For simplicity, if "all" months, show monthly breakdown.
-    // If specific month, we could show daily, but let's stick to monthly view for the whole year if "all" selected,
-    // or filtering the specific month in context.
-    // Actually, let's make the main chart always show the months of the selected year to show trends.
-
     const data: any[] = []
     const months = Array.from({ length: 12 }, (_, i) => i)
 
@@ -105,9 +120,6 @@ export default function Relatorios() {
       })
     })
 
-    // If a specific month is selected, we highlight it or just show it?
-    // The requirement says "Comparativo". Visualizing the whole year is better for context.
-    // But KPIs update based on filter.
     return data
   }, [sales, commissions, selectedYear])
 

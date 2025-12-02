@@ -20,10 +20,12 @@ export default function Comissoes() {
     monthlyGoal,
     updateMonthlyGoal,
   } = useAppStore()
+
   const { sales: monthlySales, commissionData } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
   )
+
   const [goalInput, setGoalInput] = useState(monthlyGoal.toString())
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function Comissoes() {
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
     (commissionData.extras || 0) +
-    (commissionData.salary || 1991)
+    (commissionData.salary || 0)
 
   const handleInputChange = (field: keyof CommissionData, value: string) => {
     updateCommission(getYear(selectedDate), getMonth(selectedDate), {
@@ -66,22 +68,15 @@ export default function Comissoes() {
 
   // Helper to decide input value display
   const getInputValue = (value: number, field: string) => {
-    // For salary, default is 1991 if not set in DB (handled in store).
-    // But if future, we want empty by default if it matches default?
-    // Or just if it hasn't been explicitly touched?
-    // Store returns 1991 if 0 or null.
-    // Requirement: "future... input fields ... must be displayed as empty by default".
-    // "Users must be able to manually input and save values".
-    // If I saved 1991, it should show.
-    // But checking if it is "default" vs "saved" is hard without extra state.
-    // However, for future months, commissionData is virtually generated with defaults in store if not found in DB.
-    // If it is not found in DB, `id` will be undefined.
+    // Ensure ID exists (not a placeholder) to check strict persistence if needed,
+    // but checking strict persistence is tricky with optimistic UI.
+    // We rely on the fact that if commissionData.id is present (and not empty), it's persisted.
+    // But getMonthlyData returns a placeholder object with empty ID if not found.
 
     const isPersisted = !!commissionData.id
 
     if (isFuture && !isPersisted) {
       // Default to empty for non-persisted future data
-      if (field === 'salary' && value === 1991) return ''
       if (value === 0) return ''
     }
 

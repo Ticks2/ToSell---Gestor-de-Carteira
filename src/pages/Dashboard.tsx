@@ -2,7 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react'
 import { format, subMonths, getYear, getMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, DollarSign, Users, Target, Bell } from 'lucide-react'
-import { XAxis, YAxis, AreaChart, Area } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis } from 'recharts'
 import useAppStore from '@/stores/useAppStore'
 import useCrmStore from '@/stores/useCrmStore'
 import { MonthYearPicker } from '@/components/MonthYearPicker'
@@ -15,7 +15,6 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 
 export default function Dashboard() {
   const {
@@ -101,26 +100,6 @@ export default function Dashboard() {
     }
     return data
   }, [selectedDate, getMonthTotalEarnings])
-
-  // History Data (Last 3 months)
-  const historyData = useMemo(() => {
-    return [1, 2, 3].map((monthsBack) => {
-      const date = subMonths(selectedDate, monthsBack)
-      const total = getMonthTotalEarnings(getYear(date), getMonth(date))
-      const vehicles = sales.filter(
-        (s) =>
-          getYear(s.date) === getYear(date) &&
-          getMonth(s.date) === getMonth(date) &&
-          s.type === 'Venda',
-      ).length
-
-      return {
-        date,
-        total,
-        vehicles,
-      }
-    })
-  }, [selectedDate, sales, getMonthTotalEarnings])
 
   const progress = Math.min(
     (totalMonthlyEarnings / (monthlyGoal || 5000)) * 100,
@@ -282,7 +261,7 @@ export default function Dashboard() {
           </Card>
 
           <div className="col-span-3 space-y-4">
-            {/* New Alerts Widget */}
+            {/* Alerts Widget */}
             <Card className="card-shadow border-none bg-primary/5">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center justify-between text-base">
@@ -311,7 +290,14 @@ export default function Dashboard() {
                         className="flex items-start gap-3 p-2 bg-background rounded border text-sm"
                       >
                         <div
-                          className={`h-2 w-2 mt-1.5 rounded-full ${alert.alert_type === 'birthday' ? 'bg-pink-500' : alert.alert_type === 'post-sale' ? 'bg-blue-500' : 'bg-yellow-500'}`}
+                          className={cn(
+                            'h-2 w-2 mt-1.5 rounded-full',
+                            alert.alert_type === 'birthday'
+                              ? 'bg-pink-500'
+                              : alert.alert_type === 'post-sale'
+                                ? 'bg-blue-500'
+                                : 'bg-yellow-500',
+                          )}
                         />
                         <div className="flex-1">
                           <p className="font-medium line-clamp-1">
@@ -341,8 +327,8 @@ export default function Dashboard() {
                         className={cn(
                           'flex h-9 w-9 items-center justify-center rounded-full border text-xs font-medium',
                           sale.type === 'Venda'
-                            ? 'bg-green-100 text-green-700 border-green-200'
-                            : 'bg-blue-100 text-blue-700 border-blue-200',
+                            ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-100'
+                            : 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-100',
                         )}
                       >
                         {sale.type === 'Venda' ? 'V' : 'C'}
