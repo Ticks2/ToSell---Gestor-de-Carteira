@@ -133,8 +133,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           return [
             ...prev,
             {
-              id: 'temp-optimistic', // Temporary ID for optimistic update
-              user_id: user.id,
               year,
               month,
               bonus: 0,
@@ -142,8 +140,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               transfers: 0,
               surplus: 0,
               extras: 0,
-              salary: 0,
-              created_at: new Date().toISOString(),
+              salary: 1991,
               ...data,
             },
           ]
@@ -163,10 +160,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           description: 'Suas alterações podem não ter sido salvas.',
           variant: 'destructive',
         })
-        refreshSales() // Revert optimistic update on error
       }
     },
-    [user, toast, refreshSales],
+    [user, toast],
   )
 
   const updateMonthlyGoal = useCallback(
@@ -196,9 +192,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       const commission = commissions.find(
         (c) => c.year === year && c.month === month,
       ) || {
-        id: '', // Empty ID for new commission data placeholder
-        user_id: user?.id || '',
-        created_at: new Date().toISOString(),
         year,
         month,
         bonus: 0,
@@ -206,7 +199,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         transfers: 0,
         surplus: 0,
         extras: 0,
-        salary: 0,
+        salary: 1991,
       }
 
       return {
@@ -214,7 +207,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         commissionData: commission,
       }
     },
-    [sales, commissions, user],
+    [sales, commissions],
   )
 
   const value = useMemo(

@@ -10,21 +10,42 @@ import { Car, Loader2, CheckCircle2 } from 'lucide-react'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(false)
+  const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setIsLoading(true)
+
     try {
-      const { error } = await signIn(email, password)
+      const { error } = isSignUp
+        ? await signUp(email, password)
+        : await signIn(email, password)
+
       if (error) throw error
-      navigate('/')
+
+      if (isSignUp) {
+        toast({
+          title: 'Verifique seu email',
+          description: 'Um link de confirmação foi enviado para o seu email.',
+        })
+      } else {
+        toast({
+          title: 'Login realizado',
+          description: 'Bem-vindo de volta!',
+        })
+        navigate('/')
+      }
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao fazer login')
+      toast({
+        title: 'Erro',
+        description: error.message || 'Ocorreu um erro inesperado',
+        variant: 'destructive',
+      })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -112,7 +133,6 @@ export default function Login() {
               <Input
                 id="password"
                 type="password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -130,17 +150,6 @@ export default function Login() {
               )}
             </Button>
           </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Ou continue com
-              </span>
-            </div>
-          </div>
 
           <div className="text-center text-sm text-muted-foreground">
             {isSignUp ? 'Já tem uma conta? ' : 'Não tem uma conta? '}
