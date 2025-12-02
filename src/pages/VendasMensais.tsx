@@ -35,17 +35,15 @@ import { cn } from '@/lib/utils'
 
 export default function VendasMensais() {
   const {
-    sales, // Access all historical sales
+    sales,
     selectedDate,
     setSelectedDate,
     getMonthlyData,
-    addSale,
-    updateSale,
     deleteSale,
     isLoading,
+    refreshSales,
   } = useAppStore()
 
-  // Get sales for the selected month (default behavior)
   const { sales: monthlySales } = useMemo(
     () => getMonthlyData(selectedDate),
     [selectedDate, getMonthlyData],
@@ -60,11 +58,7 @@ export default function VendasMensais() {
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
 
   const filteredSales = useMemo(() => {
-    // Trim the search term to avoid switching to global search just for spaces
     const trimmedSearch = searchTerm.trim()
-
-    // If there is a search term (non-empty), search through ALL sales.
-    // Otherwise, use the sales for the selected month.
     const sourceSales = trimmedSearch ? sales : monthlySales
 
     return sourceSales.filter((sale) => {
@@ -76,46 +70,9 @@ export default function VendasMensais() {
 
       const matchesType = filterType === 'Todas' || sale.type === filterType
 
-      // Ensure matchesSearch is treated as a boolean for filtering
-      // If search term is empty (shouldn't happen here for trimmedSearch but safe to keep), matchesSearch is true
       return !!matchesSearch && matchesType
     })
   }, [monthlySales, sales, searchTerm, filterType])
-
-  const handleAddSale = async (data: any) => {
-    try {
-      await addSale(data)
-      setIsModalOpen(false)
-      toast({
-        title: 'Venda registrada com sucesso!',
-        description: `${data.car} - ${data.client}`,
-      })
-    } catch (error) {
-      toast({
-        title: 'Erro ao registrar venda',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleUpdateSale = async (data: any) => {
-    if (editingSale) {
-      try {
-        await updateSale(editingSale.id, data)
-        setEditingSale(undefined)
-        setIsModalOpen(false)
-        toast({
-          title: 'Venda atualizada!',
-          description: 'As alterações foram salvas.',
-        })
-      } catch (error) {
-        toast({
-          title: 'Erro ao atualizar venda',
-          variant: 'destructive',
-        })
-      }
-    }
-  }
 
   const handleDeleteSale = async () => {
     if (saleToDelete) {
@@ -342,14 +299,17 @@ export default function VendasMensais() {
       <SaleFormModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSubmit={editingSale ? handleUpdateSale : handleAddSale}
-        initialData={editingSale}
+        onSuccess={() => {
+          refreshSales()
+          setEditingSale(undefined)
+        }}
+        saleToEdit={editingSale}
       />
 
       <CsvImportModal
         open={isImportModalOpen}
         onOpenChange={setIsImportModalOpen}
-        onSuccess={() => {}}
+        onSuccess={() => refreshSales()}
       />
 
       <AlertDialog

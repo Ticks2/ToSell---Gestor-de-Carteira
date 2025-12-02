@@ -41,6 +41,8 @@ import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ClientFormModal } from '@/components/crm/ClientFormModal'
 import { SaleFormModal } from '@/components/sales/SaleFormModal'
+import { Sale } from '@/types'
+import { salesService } from '@/services/salesService'
 
 export default function ClientDetails() {
   const { id } = useParams<{ id: string }>()
@@ -59,7 +61,7 @@ export default function ClientDetails() {
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [isClientModalOpen, setIsClientModalOpen] = useState(false)
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
-  const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
+  const [saleToEdit, setSaleToEdit] = useState<Sale | undefined>(undefined)
 
   // Interaction Form State
   const [newInteraction, setNewInteraction] = useState({
@@ -136,8 +138,18 @@ export default function ClientDetails() {
     }
   }
 
-  const handleEditSale = (saleId: string) => {
-    setEditingSaleId(saleId)
+  const handleEditSale = async (saleId: string) => {
+    try {
+      const sale = await salesService.getSale(saleId)
+      setSaleToEdit(sale)
+      setIsSaleModalOpen(true)
+    } catch (error) {
+      toast({ title: 'Erro ao carregar venda', variant: 'destructive' })
+    }
+  }
+
+  const handleNewSale = () => {
+    setSaleToEdit(undefined)
     setIsSaleModalOpen(true)
   }
 
@@ -237,6 +249,14 @@ export default function ClientDetails() {
                 <CardTitle className="text-lg">Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
+                <Button
+                  className="w-full justify-start"
+                  variant="default"
+                  onClick={handleNewSale}
+                >
+                  <DollarSign className="mr-2 h-4 w-4" /> Nova Venda
+                </Button>
+
                 <Dialog
                   open={isInteractionOpen}
                   onOpenChange={setIsInteractionOpen}
@@ -543,7 +563,7 @@ export default function ClientDetails() {
       <SaleFormModal
         open={isSaleModalOpen}
         onOpenChange={setIsSaleModalOpen}
-        saleId={editingSaleId}
+        saleToEdit={saleToEdit}
         fixedClientId={currentClient.id}
         onSuccess={() => id && fetchClientDetails(id)}
       />
