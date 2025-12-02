@@ -7,7 +7,14 @@ import {
 } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { format, startOfMonth } from 'date-fns'
+import {
+  format,
+  startOfMonth,
+  addMonths,
+  subMonths,
+  addYears,
+  subYears,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
@@ -29,23 +36,21 @@ export function MonthYearPicker({
   const currentYear = new Date().getFullYear()
 
   const handlePrevious = () => {
-    const newDate = startOfMonth(date)
+    const baseDate = startOfMonth(date)
     if (viewMode === 'monthly') {
-      newDate.setMonth(newDate.getMonth() - 1)
+      setDate(subMonths(baseDate, 1))
     } else {
-      newDate.setFullYear(newDate.getFullYear() - 1)
+      setDate(subYears(baseDate, 1))
     }
-    setDate(newDate)
   }
 
   const handleNext = () => {
-    const newDate = startOfMonth(date)
+    const baseDate = startOfMonth(date)
     if (viewMode === 'monthly') {
-      newDate.setMonth(newDate.getMonth() + 1)
+      setDate(addMonths(baseDate, 1))
     } else {
-      newDate.setFullYear(newDate.getFullYear() + 1)
+      setDate(addYears(baseDate, 1))
     }
-    setDate(newDate)
   }
 
   return (

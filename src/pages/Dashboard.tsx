@@ -112,7 +112,7 @@ export default function Dashboard() {
       <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Visão Geral</h2>
-          <MonthYearPicker date={selectedDate} onChange={setSelectedDate} />
+          <MonthYearPicker date={selectedDate} setDate={setSelectedDate} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
