@@ -3,119 +3,67 @@ export type OperationType = 'Venda' | 'Compra'
 export interface Client {
   id: string
   full_name: string
-  birth_date?: string | null // ISO Date string YYYY-MM-DD
-  city?: string | null
-  phone?: string | null
   email?: string | null
-  status: 'client' | 'lead'
-  created_at?: string
+  phone?: string | null
+  city?: string | null
+  birth_date?: string | null
+  status: string
+  user_id: string
+  created_at: string
 }
 
 export interface Sale {
-  id?: string
-  data_venda: string
-  carro: string
-  ano_carro: number
-  placa: string | null
-  nome_cliente: string
-  gestauto: string | null
-  valor_financiado: number | null
-  retorno: string | null
-  tipo_operacao: string
-  valor_comissao: number
-  created_at?: string
-}
-
-export interface MonthlyCommission {
   id: string
-  user_id: string
-  month: number
+  date: Date
+  car: string
   year: number
   plate?: string
-
-  // Client info
-  client: string // Display name (kept for compatibility)
-  clientId?: string // Link to client record
-  clientDetails?: Client // Full object if available
-  clientCity?: string // Helper for imports that don't link immediately
-
-  gestauto?: boolean
+  client: string
+  clientId?: string
+  clientDetails?: Client | null
+  gestauto: boolean
   financedValue?: number
-  saleValue?: number // valor_venda
+  saleValue?: number
   returnType?: 'R1' | 'R2' | 'R3' | 'R4' | 'R5'
   type: OperationType
   commission: number
+  status?: 'pending' | 'paid'
   createdAt: Date
-}
-
-export interface CommissionData {
-  id?: string
-  month: number // 0-11
-  year: number
-  bonus: number
-  returns: number
-  transfers: number
-  surplus: number
-  extras: number
-  salary: number // Fixed default 1991
-}
-
-export interface SalesSummary {
-  totalSales: number
-  totalCommissions: number
-  totalGoal: number // Configurable goal
-  percentageGoal: number
-}
-
-export interface ImportError {
-  row: number
-  message: string
-  data: any
 }
 
 export interface ImportHistory {
   id: string
-  data_importacao: string
-  arquivo: string
-  registros: number
-  status: 'sucesso' | 'erro'
-  usuario_id?: string
-}
-
-export interface ParsedSale {
-  data_venda: string
-  carro: string
-  ano_carro: number
-  placa: string | null
-  nome_cliente: string
-  gestauto: string | null
-  valor_financiado: number | null
-  retorno: string | null
-  tipo_operacao: string
-  valor_comissao: number
+  createdAt: Date
+  sourceType: 'Arquivo CSV' | 'Texto Colado'
+  status: 'Sucesso' | 'Sucesso Parcial' | 'Falha'
+  totalRecords: number
+  importedRecords: number
+  failedRecords: number
+  errorDetails: any
 }
 
 export interface ClientInteraction {
   id: string
   client_id: string
+  client?: Client
   user_id: string
-  interaction_date: string // ISO timestamp
   interaction_type: string
-  notes: string | null
-  next_contact_date: string | null // ISO Date YYYY-MM-DD
+  interaction_date: string
+  notes?: string | null
+  next_contact_date?: string | null
   status: string
   created_at: string
-  client?: Client // Joined data
 }
 
 export interface ClientAlert {
   id: string
   client_id: string
+  client?: Client
   user_id: string
-  alert_type: 'birthday' | 'post-sale' | 'custom'
-  alert_date: string // ISO Date YYYY-MM-DD
-  message: string | null
+  alert_type: string
+  alert_date: string
+  message?: string | null
   is_dismissed: boolean
+  is_email_notified: boolean
   created_at: string
-  client?: Client // Joined data
 }

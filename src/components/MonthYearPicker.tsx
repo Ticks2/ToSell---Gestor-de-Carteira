@@ -26,9 +26,9 @@ export function MonthYearPicker({
   onViewModeChange,
 }: MonthYearPickerProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const currentYear = new Date().getFullYear()
 
   const handlePrevious = () => {
-    // Ensure we start from the first of the month to avoid overflow issues
     const newDate = startOfMonth(date)
     if (viewMode === 'monthly') {
       newDate.setMonth(newDate.getMonth() - 1)
@@ -39,7 +39,6 @@ export function MonthYearPicker({
   }
 
   const handleNext = () => {
-    // Ensure we start from the first of the month to avoid overflow issues
     const newDate = startOfMonth(date)
     if (viewMode === 'monthly') {
       newDate.setMonth(newDate.getMonth() + 1)
@@ -103,13 +102,15 @@ export function MonthYearPicker({
               selected={date}
               onSelect={(d) => {
                 if (d) {
-                  // Always set to first day of month for filtering purposes
                   setDate(startOfMonth(d))
                   setIsOpen(false)
                 }
               }}
               initialFocus
               locale={ptBR}
+              captionLayout="dropdown-buttons"
+              fromYear={2020}
+              toYear={currentYear + 1}
             />
           </PopoverContent>
         </Popover>

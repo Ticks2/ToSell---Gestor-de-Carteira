@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Loader2 } from 'lucide-react'
 import { SaleFormModal } from '@/components/sales/SaleFormModal'
 import { formatCurrency } from '@/lib/utils'
-import { format, parseISO, startOfMonth } from 'date-fns'
+import { format, startOfMonth, isSameMonth, isSameYear } from 'date-fns'
 
 export default function VendasMensais() {
   const { user } = useAuth()
@@ -35,14 +35,11 @@ export default function VendasMensais() {
         const allSales = await salesService.getSales(userId)
 
         const filtered = allSales.filter((s: Sale) => {
-          const sDate = new Date(s.date)
+          const sDate = s.date
           if (viewMode === 'monthly') {
-            return (
-              sDate.getMonth() === selectedDate.getMonth() &&
-              sDate.getFullYear() === selectedDate.getFullYear()
-            )
+            return isSameMonth(sDate, selectedDate)
           } else {
-            return sDate.getFullYear() === selectedDate.getFullYear()
+            return isSameYear(sDate, selectedDate)
           }
         })
 
@@ -129,11 +126,11 @@ export default function VendasMensais() {
                 ) : (
                   sales.map((sale) => (
                     <TableRow key={sale.id}>
-                      <TableCell>
-                        {format(parseISO(sale.date), 'dd/MM/yyyy')}
-                      </TableCell>
+                      <TableCell>{format(sale.date, 'dd/MM/yyyy')}</TableCell>
                       <TableCell>{sale.car}</TableCell>
-                      <TableCell>{formatCurrency(sale.value)}</TableCell>
+                      <TableCell>
+                        {formatCurrency(sale.saleValue || 0)}
+                      </TableCell>
                       <TableCell>{formatCurrency(sale.commission)}</TableCell>
                       <TableCell>
                         <Button

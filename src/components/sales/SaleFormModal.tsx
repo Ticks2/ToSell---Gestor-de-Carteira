@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 import { Client } from '@/types'
 import { supabase } from '@/lib/supabase/client'
+import { parseISO, format } from 'date-fns'
 
 const saleSchema = z.object({
   clientId: z.string().min(1, 'Cliente é obrigatório'),
@@ -97,11 +98,11 @@ export function SaleFormModal({
         const sale = await salesService.getSale(id)
         if (sale) {
           form.reset({
-            clientId: sale.clientId || sale.client_id,
+            clientId: sale.clientId || '',
             car: sale.car,
-            value: sale.value,
+            value: sale.saleValue || 0,
             commission: sale.commission,
-            date: sale.date,
+            date: format(sale.date, 'yyyy-MM-dd'),
             status: sale.status || 'pending',
           })
         }
@@ -141,18 +142,17 @@ export function SaleFormModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      // If fixedClientId is present, ensure it is used (though form should have it)
       const finalClientId = fixedClientId || values.clientId
-
-      // Find client name to ensure we update nome_cliente correctly
       const selectedClient = clients.find((c) => c.id === finalClientId)
-      const clientName = selectedClient ? selectedClient.full_name : undefined
+      const clientName = selectedClient ? selectedClient.full_name : 'Cliente'
 
       const saleData = {
         ...values,
+        date: parseISO(values.date),
         clientId: finalClientId,
-        client: clientName, // Explicitly pass client name for updating `nome_cliente`
+        client: clientName,
         userId: user.id,
+        saleValue: values.value,
       }
 
       if (saleId) {
