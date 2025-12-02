@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from 'react'
 import { Sale, CommissionData } from '@/types'
-import { isSameMonth, getMonth, getYear } from 'date-fns'
+import { isSameMonth, getMonth, getYear, startOfMonth } from 'date-fns'
 import { salesService } from '@/services/salesService'
 import { profileService } from '@/services/profileService'
 import { commissionService } from '@/services/commissionService'
@@ -44,7 +44,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [sales, setSales] = useState<Sale[]>([])
   const [commissions, setCommissions] = useState<CommissionData[]>([])
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    startOfMonth(new Date()),
+  )
   const [monthlyGoal, setMonthlyGoal] = useState(5000)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()

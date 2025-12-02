@@ -17,11 +17,11 @@ import { Button } from '@/components/ui/button'
 import { Plus, Loader2 } from 'lucide-react'
 import { SaleFormModal } from '@/components/sales/SaleFormModal'
 import { formatCurrency } from '@/lib/utils'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, startOfMonth } from 'date-fns'
 
 export default function VendasMensais() {
   const { user } = useAuth()
-  const [date, setDate] = useState(new Date())
+  const [date, setDate] = useState(startOfMonth(new Date()))
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly')
   const [sales, setSales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)

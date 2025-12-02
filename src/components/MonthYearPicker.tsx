@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
+import { format, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
@@ -28,7 +28,8 @@ export function MonthYearPicker({
   const [isOpen, setIsOpen] = useState(false)
 
   const handlePrevious = () => {
-    const newDate = new Date(date)
+    // Ensure we start from the first of the month to avoid overflow issues
+    const newDate = startOfMonth(date)
     if (viewMode === 'monthly') {
       newDate.setMonth(newDate.getMonth() - 1)
     } else {
@@ -38,7 +39,8 @@ export function MonthYearPicker({
   }
 
   const handleNext = () => {
-    const newDate = new Date(date)
+    // Ensure we start from the first of the month to avoid overflow issues
+    const newDate = startOfMonth(date)
     if (viewMode === 'monthly') {
       newDate.setMonth(newDate.getMonth() + 1)
     } else {
@@ -101,7 +103,8 @@ export function MonthYearPicker({
               selected={date}
               onSelect={(d) => {
                 if (d) {
-                  setDate(d)
+                  // Always set to first day of month for filtering purposes
+                  setDate(startOfMonth(d))
                   setIsOpen(false)
                 }
               }}
