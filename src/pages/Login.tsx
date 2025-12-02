@@ -10,42 +10,21 @@ import { Car, Loader2, CheckCircle2 } from 'lucide-react'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const { signIn, signUp } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const { signIn } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
+    setLoading(true)
     try {
-      const { error } = isSignUp
-        ? await signUp(email, password)
-        : await signIn(email, password)
-
+      const { error } = await signIn(email, password)
       if (error) throw error
-
-      if (isSignUp) {
-        toast({
-          title: 'Verifique seu email',
-          description: 'Um link de confirmação foi enviado para o seu email.',
-        })
-      } else {
-        toast({
-          title: 'Login realizado',
-          description: 'Bem-vindo de volta!',
-        })
-        navigate('/')
-      }
+      navigate('/')
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message || 'Ocorreu um erro inesperado',
-        variant: 'destructive',
-      })
+      toast.error(error.message || 'Erro ao fazer login')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -133,6 +112,7 @@ export default function Login() {
               <Input
                 id="password"
                 type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

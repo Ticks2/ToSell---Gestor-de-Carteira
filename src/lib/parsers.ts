@@ -292,7 +292,22 @@ const isStopRow = (row: string[]): boolean => {
   const firstContent = row.find((c) => c.trim().length > 0)?.toLowerCase()
   if (!firstContent) return false
 
-  const stopWords = ['total', 'resumo', 'quantidade', 'subtotal']
+  const stopWords = [
+    'total',
+    'resumo',
+    'quantidade',
+    'subtotal',
+    'comissões',
+    'comissoes',
+    'saldo',
+    'entradas',
+    'saídas',
+    'saidas',
+    'geral',
+    'acumulado',
+    'conferência',
+    'conferencia',
+  ]
   return stopWords.some((w) => firstContent.startsWith(w))
 }
 
@@ -389,10 +404,12 @@ export const parseSalesContent = (content: string): ParseResult => {
           return
         }
 
-        if (commission <= 0) {
+        // Relaxed validation: allow 0 commission (often missing or Purchase/Compra)
+        // Negative commissions still flagged as potential errors, though allowed in some contexts, usually data entry error here
+        if (commission < 0) {
           errors.push({
             row: rowNum,
-            message: `Valor de comissão inválido: "${rawData.valor_comissao}"`,
+            message: `Valor de comissão inválido (negativo): "${rawData.valor_comissao}"`,
             data: rawData,
           })
           return
@@ -432,7 +449,7 @@ export const parseSalesContent = (content: string): ParseResult => {
           valor_financiado: parseCurrency(rawData.valor_financiado) || null,
           retorno: rawData.retorno || null,
           tipo_operacao: tipo,
-          valor_comissao: commission,
+          valor_comissao: commission, // Now can be 0
         }
 
         sales.push(sale)

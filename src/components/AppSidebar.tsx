@@ -1,102 +1,124 @@
 import {
-  Home,
-  BarChart2,
+  LayoutDashboard,
   DollarSign,
-  FileText,
+  Wallet,
+  BarChart3,
   History,
   Users,
+  Settings,
+  LogOut,
+  Building2,
   Bell,
-  LayoutDashboard,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarFooter,
+  SidebarHeader,
   SidebarRail,
-  useSidebar,
 } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
-
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: FileText, label: 'Vendas Mensais', path: '/vendas' },
-  { icon: DollarSign, label: 'Comissões', path: '/comissoes' },
-  { icon: BarChart2, label: 'Relatórios', path: '/relatorios' },
-  { icon: Users, label: 'CRM', path: '/crm/clients' },
-  { icon: Bell, label: 'Alertas CRM', path: '/crm/alerts' },
-  {
-    icon: History,
-    label: 'Histórico de Importações',
-    path: '/historico-importacoes',
-  },
-]
+import { useAuth } from '@/hooks/use-auth'
 
 export function AppSidebar() {
-  const location = useLocation()
-  const { open, isMobile, setOpenMobile } = useSidebar()
+  const { pathname } = useLocation()
+  const { signOut } = useAuth()
 
-  const handleLinkClick = () => {
-    if (isMobile) {
-      setOpenMobile(false)
-    }
-  }
+  const items = [
+    { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+    { title: 'Vendas', url: '/vendas', icon: DollarSign },
+    { title: 'Comissões', url: '/comissoes', icon: Wallet },
+    { title: 'Relatórios', url: '/relatorios', icon: BarChart3 },
+    { title: 'Histórico', url: '/historico-importacoes', icon: History },
+  ]
+
+  const crmItems = [
+    { title: 'Clientes', url: '/crm/clients', icon: Users },
+    { title: 'Kanban', url: '/crm/kanban', icon: Building2 },
+    { title: 'Alertas', url: '/crm/alerts', icon: Bell },
+  ]
 
   return (
-    <Sidebar
-      collapsible="icon"
-      className="border-r border-border/50 bg-sidebar"
-    >
-      <SidebarHeader className="h-16 flex items-center justify-center border-b border-border/50 px-4">
-        {open ? (
-          <h1 className="text-lg font-bold tracking-tight text-primary truncate">
-            Gestão Veículos
-          </h1>
-        ) : (
-          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-            G
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="p-4 border-b">
+        <div className="flex items-center gap-2 font-bold text-xl px-2">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
+            V
           </div>
-        )}
+          <span className="group-data-[collapsible=icon]:hidden">
+            VendasApp
+          </span>
+        </div>
       </SidebarHeader>
-      <SidebarContent className="p-2">
-        <SidebarMenu>
-          {navItems.map((item) => {
-            const isActive =
-              location.pathname === item.path ||
-              (item.path !== '/' && location.pathname.startsWith(item.path))
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-            return (
-              <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive}
-                  tooltip={item.label}
-                  onClick={handleLinkClick}
-                  className={cn(
-                    'h-12 transition-all duration-200 ease-in-out rounded-md mb-1',
-                    isActive
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-md'
-                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-primary',
-                  )}
-                >
-                  <Link to={item.path} className="flex items-center gap-3">
-                    <item.icon
-                      className={cn(
-                        'h-5 w-5',
-                        isActive ? 'text-white' : 'text-current',
-                      )}
-                    />
-                    <span className="text-sm">{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
+        <SidebarGroup>
+          <SidebarGroupLabel>CRM</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {crmItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(item.url)}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t p-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Minha Conta">
+              <Link to="/account">
+                <Settings />
+                <span>Minha Conta</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => signOut()} tooltip="Sair">
+              <LogOut />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

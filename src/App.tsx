@@ -19,6 +19,7 @@ import CrmClients from './pages/crm/CrmClients'
 import CrmKanban from './pages/crm/CrmKanban'
 import CrmAlerts from './pages/crm/CrmAlerts'
 import ClientDetails from './pages/crm/ClientDetails'
+import NotificationSettings from './pages/crm/NotificationSettings'
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth()
@@ -66,6 +67,10 @@ const App = () => (
               <Route path="/crm/clients" element={<CrmClients />} />
               <Route path="/crm/kanban" element={<CrmKanban />} />
               <Route path="/crm/alerts" element={<CrmAlerts />} />
+              <Route
+                path="/crm/notifications"
+                element={<NotificationSettings />}
+              />
               <Route path="/crm/clients/:id" element={<ClientDetails />} />
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { getMonth, getYear, isAfter, startOfMonth } from 'date-fns'
+import { getMonth, getYear } from 'date-fns'
 import { Save } from 'lucide-react'
 import { CommissionData } from '@/types'
 
@@ -49,7 +49,7 @@ export default function Comissoes() {
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
     (commissionData.extras || 0) +
-    (commissionData.salary || 1991)
+    (commissionData.salary ?? 1991)
 
   const handleInputChange = (field: keyof CommissionData, value: string) => {
     updateCommission(getYear(selectedDate), getMonth(selectedDate), {
@@ -61,33 +61,17 @@ export default function Comissoes() {
     updateMonthlyGoal(Number(goalInput))
   }
 
-  // Logic to check for future date
-  const isFuture = isAfter(startOfMonth(selectedDate), startOfMonth(new Date()))
-
   // Helper to decide input value display
-  const getInputValue = (value: number, field: string) => {
-    // For salary, default is 1991 if not set in DB (handled in store).
-    // But if future, we want empty by default if it matches default?
-    // Or just if it hasn't been explicitly touched?
-    // Store returns 1991 if 0 or null.
-    // Requirement: "future... input fields ... must be displayed as empty by default".
-    // "Users must be able to manually input and save values".
-    // If I saved 1991, it should show.
-    // But checking if it is "default" vs "saved" is hard without extra state.
-    // However, for future months, commissionData is virtually generated with defaults in store if not found in DB.
-    // If it is not found in DB, `id` will be undefined.
-
-    const isPersisted = !!commissionData.id
-
-    if (isFuture && !isPersisted) {
-      // Default to empty for non-persisted future data
-      if (field === 'salary' && value === 1991) return ''
-      if (value === 0) return ''
+  const getInputValue = (value: number | null | undefined, field: string) => {
+    const val = value ?? 0
+    // Special handling for salary to ensure '0' is displayed as requested,
+    // even if typically we might hide 0s for aesthetics.
+    if (field === 'salary') {
+      return val
     }
-
-    // Existing logic for current/past or persisted data
-    if (value === 0) return ''
-    return value
+    // For other fields, keep 0 hidden (placeholder shows)
+    if (val === 0) return ''
+    return val
   }
 
   return (
