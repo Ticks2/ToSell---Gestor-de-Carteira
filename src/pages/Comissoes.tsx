@@ -49,7 +49,7 @@ export default function Comissoes() {
     (commissionData.transfers || 0) +
     (commissionData.surplus || 0) +
     (commissionData.extras || 0) +
-    (commissionData.salary ?? 1991)
+    (commissionData.salary ?? 0)
 
   const handleInputChange = (field: keyof CommissionData, value: string) => {
     updateCommission(getYear(selectedDate), getMonth(selectedDate), {
@@ -64,12 +64,7 @@ export default function Comissoes() {
   // Helper to decide input value display
   const getInputValue = (value: number | null | undefined, field: string) => {
     const val = value ?? 0
-    // Special handling for salary to ensure '0' is displayed as requested,
-    // even if typically we might hide 0s for aesthetics.
-    if (field === 'salary') {
-      return val
-    }
-    // For other fields, keep 0 hidden (placeholder shows)
+    // For all fields, keep 0 hidden (placeholder shows)
     if (val === 0) return ''
     return val
   }
