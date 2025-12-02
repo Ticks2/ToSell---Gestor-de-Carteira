@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 export default function VendasMensais() {
   const {
@@ -59,12 +60,15 @@ export default function VendasMensais() {
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
 
   const filteredSales = useMemo(() => {
-    // If there is a search term, search through ALL sales.
+    // Trim the search term to avoid switching to global search just for spaces
+    const trimmedSearch = searchTerm.trim()
+
+    // If there is a search term (non-empty), search through ALL sales.
     // Otherwise, use the sales for the selected month.
-    const sourceSales = searchTerm.trim() ? sales : monthlySales
+    const sourceSales = trimmedSearch ? sales : monthlySales
 
     return sourceSales.filter((sale) => {
-      const term = searchTerm.toLowerCase()
+      const term = trimmedSearch.toLowerCase()
       const matchesSearch =
         sale.client.toLowerCase().includes(term) ||
         sale.car.toLowerCase().includes(term) ||
@@ -73,6 +77,7 @@ export default function VendasMensais() {
       const matchesType = filterType === 'Todas' || sale.type === filterType
 
       // Ensure matchesSearch is treated as a boolean for filtering
+      // If search term is empty (shouldn't happen here for trimmedSearch but safe to keep), matchesSearch is true
       return !!matchesSearch && matchesType
     })
   }, [monthlySales, sales, searchTerm, filterType])
@@ -251,7 +256,12 @@ export default function VendasMensais() {
                       <TableCell>{format(sale.date, 'dd/MM/yyyy')}</TableCell>
                       <TableCell>
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${sale.type === 'Venda' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'}`}
+                          className={cn(
+                            'px-2 py-1 rounded-full text-xs font-medium',
+                            sale.type === 'Venda'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+                          )}
                         >
                           {sale.type}
                         </span>
@@ -339,6 +349,7 @@ export default function VendasMensais() {
       <CsvImportModal
         open={isImportModalOpen}
         onOpenChange={setIsImportModalOpen}
+        onSuccess={() => {}}
       />
 
       <AlertDialog
